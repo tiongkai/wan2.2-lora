@@ -14,6 +14,10 @@ Sources searched: Google web search (multiple queries), YouTube search. Key doma
 
 User-requested source: https://www.youtube.com/watch?v=2d6A_l8c_x8 (Ostris Wan 2.2 I2V 14B LoRA training)
 
+## [2026-05-13] concept | Multi-GPU training strategies for 2×24GB
+
+Added wiki/concepts/multi-gpu-training.md. Two strategies: parallel dual-noise (train high/low experts simultaneously on separate GPUs via musubi-tuner) and pipeline parallelism (split model layers across GPUs via diffusion-pipe/DeepSpeed for ~48GB effective VRAM). Updated plan.md with parallel dual-noise train_all.sh script and diffusion-pipe pipeline config notes.
+
 ## [2026-05-12] synthesis | Plan critique — violence detection LoRA configs
 
 Reviewed `/Users/htx/Desktop/Projects/wan2.2-lora-1try/plan.md` against the wiki. Found 12 issues (2 critical, 7 significant, 3 minor). Produced revised configs in `wiki/synthesis/plan-critique-revised-configs.md`. Critical fixes: missing dual-noise flags and insufficient num_frames. Target hardware: 24GB (RTX 4090/3090) with A100 scaling notes.

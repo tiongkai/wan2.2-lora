@@ -22,6 +22,7 @@ Content catalog for the Wan 2.2 LoRA Training Wiki. Read this first on every que
 - [Dual-Noise Architecture](concepts/dual-noise-architecture.md) — Wan 2.2's MoE system: high-noise vs low-noise experts, tool-specific approaches, model files needed.
 - [Hardware Requirements](concepts/hardware-requirements.md) — VRAM by training type, GPU comparison table, training time estimates, VRAM optimization techniques, cloud options.
 - [Resolution Guide](concepts/resolution-guide.md) — Resolution tiers, the golden rule (never exceed source), resolution-dataset size relationship, frames and resolution VRAM.
+- [Multi-GPU Training](concepts/multi-gpu-training.md) — 2×24GB strategies: parallel dual-noise (musubi-tuner) vs pipeline parallelism (diffusion-pipe). DDP caveats.
 - [Overfitting and Troubleshooting](concepts/overfitting-and-troubleshooting.md) — Detection tells, 6 common issues with fixes, Wan 2.2-specific behavior, checkpoint management, loss monitoring.
 
 ## Entities

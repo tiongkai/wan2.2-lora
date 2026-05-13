@@ -6,11 +6,38 @@
 
 **Architecture:** Each threat category gets its own LoRA trained on curated real-world reference clips; a batch generation pipeline then uses those LoRAs with varied scene prompts to produce thousands of synthetic labeled clips; a post-processing stage packages the output into ML-ready dataset formats (YOLO, classification CSV, COCO-style JSON).
 
-**Tech Stack:** Python 3.11, ai-toolkit (ostris), ffmpeg-python, scenedetect, Ollama + Qwen2.5-VL 7B multi-frame (captioning), TensorBoard + W&B (monitoring), ComfyUI (inference/generation), pandas, PyYAML, tqdm, pytest
+**Tech Stack:** Python 3.11, ai-toolkit (ostris), musubi-tuner (kohya-ss, for parallel dual-noise), diffusion-pipe (optional, for pipeline parallelism), ffmpeg-python, scenedetect, Ollama + Qwen2.5-VL 7B multi-frame (captioning), TensorBoard + W&B (monitoring), ComfyUI (inference/generation), pandas, PyYAML, tqdm, pytest
 
 **Hardware Profiles:**
-- **24GB (RTX 3090/4090/5090):** 512×768, 33 frames, batch 1, FP8 quantization — primary target
-- **80GB (A100/H100):** 720×1280, 57–81 frames, batch 2, optional quantization — future scaling
+- **2×24GB (local):** Primary target. Two strategies available (see Multi-GPU section below)
+- **80GB (A100/H100):** 720×1280, 57–81 frames, batch 2, optional quantization — future cloud scaling
+
+**Multi-GPU Strategy (2×24GB):**
+
+| Strategy | Tool | What It Does | Best For |
+|----------|------|-------------|----------|
+| **Parallel dual-noise** (recommended) | musubi-tuner | Train high-noise on GPU 0, low-noise on GPU 1 simultaneously | Halving wall-clock time. Each GPU runs independently at 512×768, 33 frames |
+| **Pipeline parallelism** | diffusion-pipe | Split model layers across both GPUs (~48GB effective VRAM) | Unlocking higher resolution (720×1280) and more frames (57-81) |
+
+Default approach: **parallel dual-noise** via musubi-tuner. Each GPU trains independently with the existing 24GB-optimized settings — no distributed training complexity. AI Toolkit is used for single-GPU fallback or single-expert training.
+
+For pipeline parallelism (higher resolution), switch to diffusion-pipe:
+```bash
+# diffusion-pipe config additions for 2×24GB:
+# pipeline_stages = 2
+# activation_checkpointing = true
+# blocks_to_swap = 16
+# transformer_dtype = "float8"
+#
+# Launch:
+# NCCL_P2P_DISABLE="1" NCCL_IB_DISABLE="1" deepspeed --num_gpus=2 train.py --deepspeed --config config.toml
+#
+# Manual layer partitioning (optional):
+# partition = "manual"
+# partition_split = [18]   # layers 0-17 → GPU 0, rest → GPU 1
+```
+
+> **Note on musubi-tuner DDP:** Accelerate multi-GPU (DDP) mode exists but is buggy — `--blocks_to_swap` conflicts with DDP, and users report OOM or idle GPUs. Avoid DDP; use the parallel dual-noise strategy instead.
 
 ---
 
@@ -660,7 +687,10 @@ git commit -m "feat: VLM-based auto-captioning with trigger word injection"
 - Create: `configs/shooting_lora.yaml`
 - Create: `scripts/train_all.sh`
 
-ai-toolkit uses YAML with a `job: extension` wrapper. With `model_kwargs: train_high_noise: true, train_low_noise: true`, the toolkit trains both Wan 2.2 noise experts in a single run and produces a unified LoRA file. This is the simplest approach — no separate training runs needed (unlike musubi-tuner which requires two separate runs).
+**Two training approaches are provided:**
+
+1. **Parallel dual-noise via musubi-tuner (recommended for 2×24GB):** Train high-noise on GPU 0 and low-noise on GPU 1 simultaneously. Halves wall-clock time. Produces two LoRA files per category.
+2. **Unified via ai-toolkit (single GPU fallback):** With `model_kwargs: train_high_noise: true, train_low_noise: true`, trains both experts in a single run. Simpler but sequential — uses only one GPU.
 
 - [ ] **Step 1: Write fighting config (template for all)**
 
@@ -934,35 +964,135 @@ config:
           - "shtn22, armed confrontation on a street corner, wide angle CCTV footage"
 ```
 
-- [ ] **Step 5: Write train_all.sh**
+- [ ] **Step 5: Write musubi-tuner dataset TOML (one per category)**
+
+```toml
+# configs/musubi/fighting_dataset.toml
+[general]
+caption_extension = ".txt"
+batch_size = 1
+enable_bucket = false
+
+[[datasets]]
+video_directory = "datasets/processed/fighting"
+cache_directory = "datasets/processed/fighting/cache"
+frame_extraction = "uniform"
+source_fps = 24.0
+target_frames = [33]
+max_frames = 33
+resolution = [768, 512]
+```
+
+- [ ] **Step 6: Write train_all.sh (parallel dual-noise on 2×24GB)**
 
 ```bash
 #!/usr/bin/env bash
 # scripts/train_all.sh
-# Trains all four category LoRAs sequentially using ai-toolkit.
+# Trains all four category LoRAs using musubi-tuner with parallel dual-noise.
+# High-noise on GPU 0, low-noise on GPU 1 — runs simultaneously per category.
 # Run from project root: bash scripts/train_all.sh
-set -e
+set -euo pipefail
 
-AITOOLKIT="../ai-toolkit"
-CONFIGS="./configs"
+MUSUBI="../musubi-tuner"
+BASE="$(pwd)"
+DATASET_CONFIGS="./configs/musubi"
+VENV=".venv/bin/activate"
 
-for category in fighting vandalism stabbing shooting; do
-  echo "===== Training: $category ====="
-  cd "$AITOOLKIT"
-  python run.py "$OLDPWD/$CONFIGS/${category}_lora.yaml"
-  cd "$OLDPWD"
+# Common musubi-tuner arguments
+COMMON_ARGS=(
+  --sdpa --mixed_precision bf16 --fp8_base
+  --optimizer_type adamw8bit
+  --gradient_checkpointing
+  --network_module networks.lora_wan --network_dim 32 --network_alpha 32
+  --max_data_loader_n_workers 2 --persistent_data_loader_workers
+  --save_every_n_steps 300 --seed 42
+)
+
+train_category() {
+  local category=$1
+  local trigger=$2
+  local steps=$3
+
+  echo "===== Training: $category (high+low noise in parallel) ====="
+
+  local dataset_config="${DATASET_CONFIGS}/${category}_dataset.toml"
+  local output_dir="${BASE}/loras/${category}"
+  mkdir -p "$output_dir"
+
+  # GPU 0: High-noise expert
+  CUDA_VISIBLE_DEVICES=0 accelerate launch \
+    --num_cpu_threads_per_process 1 --mixed_precision bf16 \
+    "${MUSUBI}/src/musubi_tuner/wan_train_network.py" \
+    --task t2v-A14B \
+    --dit "${BASE}/models/wan2.2-t2v/wan2.2_t2v_high_noise_14B_fp16.safetensors" \
+    --vae "${BASE}/models/wan2.2-t2v/wan_2.1_vae.safetensors" \
+    --dataset_config "$dataset_config" \
+    --learning_rate 2e-4 \
+    --timestep_sampling shift --discrete_flow_shift 7.0 \
+    --min_timestep 900 --max_timestep 1000 \
+    --max_train_steps "$steps" \
+    --output_dir "$output_dir" \
+    --output_name "${category}_high_noise" \
+    "${COMMON_ARGS[@]}" &
+  local pid_high=$!
+
+  # GPU 1: Low-noise expert
+  CUDA_VISIBLE_DEVICES=1 accelerate launch \
+    --num_cpu_threads_per_process 1 --mixed_precision bf16 \
+    "${MUSUBI}/src/musubi_tuner/wan_train_network.py" \
+    --task t2v-A14B \
+    --dit "${BASE}/models/wan2.2-t2v/wan2.2_t2v_low_noise_14B_fp16.safetensors" \
+    --vae "${BASE}/models/wan2.2-t2v/wan_2.1_vae.safetensors" \
+    --dataset_config "$dataset_config" \
+    --learning_rate 2e-5 \
+    --timestep_sampling shift --discrete_flow_shift 3.0 \
+    --min_timestep 0 --max_timestep 900 \
+    --max_train_steps "$steps" \
+    --output_dir "$output_dir" \
+    --output_name "${category}_low_noise" \
+    "${COMMON_ARGS[@]}" &
+  local pid_low=$!
+
+  # Wait for both to finish
+  wait $pid_high $pid_low
   echo "===== Done: $category ====="
+}
+
+# Pre-cache latents and text encoder outputs (required for musubi-tuner)
+echo "===== Pre-caching (run once) ====="
+for category in fighting vandalism stabbing shooting; do
+  python "${MUSUBI}/src/musubi_tuner/cache_latents.py" \
+    --task t2v-A14B \
+    --vae "${BASE}/models/wan2.2-t2v/wan_2.1_vae.safetensors" \
+    --dataset_config "${DATASET_CONFIGS}/${category}_dataset.toml" \
+    --batch_size 1
+
+  python "${MUSUBI}/src/musubi_tuner/cache_text_encoder_outputs.py" \
+    --task t2v-A14B \
+    --t5 "${BASE}/models/wan2.2-t2v/text_encoder/" \
+    --dataset_config "${DATASET_CONFIGS}/${category}_dataset.toml" \
+    --batch_size 1
 done
 
+# Train each category (high+low noise in parallel on GPU 0 + GPU 1)
+#                    category    trigger   steps
+train_category       "fighting"  "fght99"  3000
+train_category       "vandalism" "vndl77"  2500
+train_category       "stabbing"  "stbb44"  3000
+train_category       "shooting"  "shtn22"  3000
+
 echo "All LoRAs trained."
+echo "Output: loras/<category>/<category>_high_noise.safetensors + <category>_low_noise.safetensors"
 ```
 
-- [ ] **Step 6: Make executable and commit**
+> **Single-GPU fallback (ai-toolkit):** If you want to use only one GPU or prefer the simpler AI Toolkit workflow, the per-category YAML configs above still work with `python run.py configs/fighting_lora.yaml`. They train both experts sequentially in one run.
+
+- [ ] **Step 7: Make executable and commit**
 
 ```bash
 chmod +x scripts/train_all.sh
 git add configs/ scripts/train_all.sh
-git commit -m "feat: per-category ai-toolkit training configs and train_all script"
+git commit -m "feat: per-category training configs (ai-toolkit + musubi-tuner parallel dual-noise)"
 ```
 
 ---
@@ -971,7 +1101,23 @@ git commit -m "feat: per-category ai-toolkit training configs and train_all scri
 
 This task is operational — run training and validate outputs. No code to write.
 
-- [ ] **Step 1: Start TensorBoard before training**
+- [ ] **Step 1: Clone and install musubi-tuner**
+
+```bash
+cd /Users/htx/Desktop/Projects
+git clone https://github.com/kohya-ss/musubi-tuner
+cd musubi-tuner
+pip install -r requirements.txt
+```
+
+- [ ] **Step 2: Verify both GPUs are visible**
+
+```bash
+python -c "import torch; print(f'GPUs: {torch.cuda.device_count()}'); [print(f'  [{i}] {torch.cuda.get_device_name(i)} — {torch.cuda.get_device_properties(i).total_mem / 1e9:.0f}GB') for i in range(torch.cuda.device_count())]"
+# Expected: 2 GPUs, 24GB each
+```
+
+- [ ] **Step 3: Start TensorBoard before training**
 
 ```bash
 source .venv/bin/activate
@@ -979,7 +1125,7 @@ tensorboard --logdir ./logs --port 6006 &
 # Open http://localhost:6006 in browser
 ```
 
-- [ ] **Step 2: (Optional) Configure W&B**
+- [ ] **Step 4: (Optional) Configure W&B**
 
 ```bash
 wandb login
@@ -987,13 +1133,28 @@ wandb login
 # W&B dashboard will show sample video previews at each checkpoint
 ```
 
-- [ ] **Step 3: Start training (single category first)**
+- [ ] **Step 5: Start training (single category first, parallel dual-noise)**
 
 ```bash
-cd /Users/htx/Desktop/Projects/ai-toolkit
-source ../wan2.2-lora/.venv/bin/activate
-python run.py ../wan2.2-lora/configs/fighting_lora.yaml
+# This trains high-noise on GPU 0 and low-noise on GPU 1 simultaneously
+source .venv/bin/activate
+bash scripts/train_all.sh
+# Or for a single category test run:
+# Edit train_all.sh to only call train_category "fighting" "fght99" 3000
 ```
+
+Monitor `nvidia-smi` to confirm both GPUs are active:
+```bash
+watch -n 2 nvidia-smi
+# Both GPUs should show ~20-23GB usage during training
+```
+
+> **Single-GPU fallback (ai-toolkit):** If parallel training has issues, fall back to:
+> ```bash
+> cd /Users/htx/Desktop/Projects/ai-toolkit
+> source ../wan2.2-lora/.venv/bin/activate
+> python run.py ../wan2.2-lora/configs/fighting_lora.yaml
+> ```
 
 - [ ] **Step 4: Checkpoint evaluation checklist (run at step 600, 1200, 1800, 2400)**
 
@@ -1009,19 +1170,23 @@ Stop training at the best checkpoint. Common stopping point: 1800–2400 steps f
 
 ```bash
 ls loras/fighting/
-# Expected (ai-toolkit with train_high_noise + train_low_noise):
-#   fighting_lora_r32.safetensors  (single file containing both experts)
-# ai-toolkit also writes a samples/ subdirectory with validation frames per checkpoint
-# Note: exact filename depends on ai-toolkit version — check output logs
+# Expected (musubi-tuner parallel dual-noise):
+#   fighting_high_noise.safetensors   (high-noise expert LoRA)
+#   fighting_low_noise.safetensors    (low-noise expert LoRA)
+#
+# Expected (ai-toolkit single-GPU fallback):
+#   fighting_lora_r32.safetensors     (unified file for both experts)
+#
+# Both LoRA files are loaded at inference in ComfyUI
 ```
 
-- [ ] **Step 6: Repeat for remaining categories**
+- [ ] **Step 7: Repeat for remaining categories**
 
-```bash
-bash scripts/train_all.sh
-```
+`train_all.sh` already handles all four categories sequentially (each category trains high+low noise in parallel). Monitor loss curves per category in TensorBoard.
 
-Monitor loss curves per category in TensorBoard. Target loss: ~0.02–0.04 at convergence.
+Expected wall-clock time per category (2×24GB, 512×768, 33 frames):
+- ~6-10 hours per category (high and low noise training simultaneously)
+- ~24-40 hours total for all 4 categories
 
 ---
 
@@ -1119,10 +1284,23 @@ import uuid
 COMFYUI_URL = "http://localhost:8188"
 
 BASE_LORA_PATHS = {
-    "fighting":  "../../wan2.2-lora/loras/fighting/fighting_lora_r32",
-    "vandalism": "../../wan2.2-lora/loras/vandalism/vandalism_lora_r32",
-    "stabbing":  "../../wan2.2-lora/loras/stabbing/stabbing_lora_r32",
-    "shooting":  "../../wan2.2-lora/loras/shooting/shooting_lora_r32",
+    # Musubi-tuner produces separate high/low noise files per category
+    "fighting":  {
+        "high": "../../wan2.2-lora/loras/fighting/fighting_high_noise.safetensors",
+        "low":  "../../wan2.2-lora/loras/fighting/fighting_low_noise.safetensors",
+    },
+    "vandalism": {
+        "high": "../../wan2.2-lora/loras/vandalism/vandalism_high_noise.safetensors",
+        "low":  "../../wan2.2-lora/loras/vandalism/vandalism_low_noise.safetensors",
+    },
+    "stabbing":  {
+        "high": "../../wan2.2-lora/loras/stabbing/stabbing_high_noise.safetensors",
+        "low":  "../../wan2.2-lora/loras/stabbing/stabbing_low_noise.safetensors",
+    },
+    "shooting":  {
+        "high": "../../wan2.2-lora/loras/shooting/shooting_high_noise.safetensors",
+        "low":  "../../wan2.2-lora/loras/shooting/shooting_low_noise.safetensors",
+    },
 }
 
 GENERATION_DEFAULTS = {
@@ -1147,8 +1325,8 @@ PATCH_FIELDS = {
     "prompt":       ("6", ["inputs", "text"]),
     "neg_prompt":   ("7", ["inputs", "text"]),
     "seed":         ("3", ["inputs", "seed"]),
-    "lora_path":    ("4", ["inputs", "lora_path"]),
-    "lora_strength":("4", ["inputs", "strength"]),
+    "lora_high":    ("4", ["inputs", "lora_high_noise"]),   # high-noise expert LoRA
+    "lora_low":     ("4", ["inputs", "lora_low_noise"]),    # low-noise expert LoRA
     "filename":     ("9", ["inputs", "filename_prefix"]),
 }
 
@@ -1166,12 +1344,13 @@ def build_workflow(prompt: str, seed: int, category: str, cfg: float = 4.0) -> d
         )
     workflow = json.loads(WORKFLOW_TEMPLATE_PATH.read_text())
 
-    lora_base = BASE_LORA_PATHS[category]
+    lora_paths = BASE_LORA_PATHS[category]
     patches = {
         "prompt": prompt,
         "neg_prompt": "blurry, low quality, watermark, text, distorted",
         "seed": seed,
-        "lora_path": f"{lora_base}.safetensors",
+        "lora_high": lora_paths["high"],
+        "lora_low": lora_paths["low"],
         "filename": f"synthetic_{category}",
     }
     for key, value in patches.items():
