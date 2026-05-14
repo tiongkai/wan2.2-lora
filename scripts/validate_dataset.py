@@ -60,6 +60,9 @@ def validate_generated_dataset(clips_dir: Path, annotations_csv: Path) -> pd.Dat
         for clip in tqdm(list(cat_dir.glob("*.mp4")), desc=f"Validating {category}"):
             results.append(validate_clip(clip))
     df = pd.DataFrame(results)
+    if df.empty:
+        print("\nValidation: no clips found")
+        return df
     total = len(df)
     valid = df["valid"].sum()
     print(f"\nValidation: {valid}/{total} clips passed ({100*valid/total:.1f}%)")

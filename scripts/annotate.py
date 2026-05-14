@@ -43,6 +43,7 @@ def export_dataset(generated_dir: Path, out_dir: Path):
 
     combined = pd.concat(all_dfs, ignore_index=True)
     combined = combined[combined["status"] == "ok"]
+    combined["id"] = range(len(combined))  # globally unique IDs
 
     csv_df = build_annotation_csv(combined, CLASS_MAP)
     csv_df.to_csv(out_dir / "annotations.csv", index=False)

@@ -1,16 +1,7 @@
-import subprocess, json, re
+import subprocess, json, re, sys
 from pathlib import Path
 from tqdm import tqdm
-
-
-def probe_duration(path: Path) -> float:
-    result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", str(path)],
-        capture_output=True, text=True, check=True
-    )
-    streams = json.loads(result.stdout).get("streams", [])
-    video_streams = [s for s in streams if s.get("codec_type") == "video"]
-    return float(video_streams[0]["duration"]) if video_streams else 0.0
+from scripts.utils import probe_duration
 
 
 def is_valid_clip(path: Path, min_seconds: float = 2.0) -> bool:
@@ -36,7 +27,7 @@ def trim_clip(src: Path, dst: Path, max_seconds: float = 5.0, fps: int = 24,
 def has_scene_cut(path: Path, threshold: float = 27.0) -> bool:
     """Return True if clip contains a hard scene cut (disqualifies it)."""
     result = subprocess.run([
-        "python", "-m", "scenedetect",
+        sys.executable, "-m", "scenedetect",
         "-i", str(path),
         "detect-adaptive", f"--threshold={threshold}",
         "list-scenes", "-n"

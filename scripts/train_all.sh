@@ -5,7 +5,7 @@
 # Run from project root: bash scripts/train_all.sh
 set -e
 
-MUSUBI="$(cd .. && pwd)/musubi-tuner"
+MUSUBI="$(cd "$(dirname "$0")/../.." && pwd)/musubi-tuner"
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Model paths — verify these match your download after Task 1 Step 4
@@ -33,18 +33,17 @@ train_category() {
   local name="${category}_lora_r32"
 
   echo "===== Pre-caching: $category ====="
-  cd "$MUSUBI"
-  uv run python cache_latents.py \
+  uv run python "$MUSUBI/cache_latents.py" \
     --task t2v-A14B --dit "$DIT_HIGH" --vae "$VAE" \
     --dataset_config "$config"
-  uv run python cache_text_encoder_outputs.py \
+  uv run python "$MUSUBI/cache_text_encoder_outputs.py" \
     --task t2v-A14B --t5xxl "$T5" \
     --dataset_config "$config"
 
   echo "===== Training $category — high-noise (GPU 0) + low-noise (GPU 1) ====="
   CUDA_VISIBLE_DEVICES=0 uv run accelerate launch \
     --num_cpu_threads_per_process 1 --mixed_precision bf16 \
-    src/musubi_tuner/wan_train_network.py \
+    "$MUSUBI/src/musubi_tuner/wan_train_network.py" \
     "${COMMON_ARGS[@]}" \
     --dit "$DIT_HIGH" \
     --dataset_config "$config" \
@@ -56,7 +55,7 @@ train_category() {
 
   CUDA_VISIBLE_DEVICES=1 uv run accelerate launch \
     --num_cpu_threads_per_process 1 --mixed_precision bf16 \
-    src/musubi_tuner/wan_train_network.py \
+    "$MUSUBI/src/musubi_tuner/wan_train_network.py" \
     "${COMMON_ARGS[@]}" \
     --dit "$DIT_LOW" \
     --dataset_config "$config" \
@@ -67,7 +66,6 @@ train_category() {
     --log_with tensorboard --logging_dir "$BASE_DIR/logs/$category" &
 
   wait
-  cd "$BASE_DIR"
   echo "===== Done: $category ====="
 }
 

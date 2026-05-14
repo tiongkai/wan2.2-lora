@@ -19,31 +19,24 @@ BASE_LORA_PATHS = {
     "shooting":  "../../wan2.2-lora/loras/shooting/shooting_lora_r32",
 }
 
-GENERATION_DEFAULTS = {
-    "steps": 30,
-    "cfg": 4.0,
-    "lora_strength": 0.75,
-    "width": 768,
-    "height": 512,
-    "num_frames": 33,
-}
-
 WORKFLOW_TEMPLATE_PATH = Path(__file__).parent / "comfyui_wan22_t2v_workflow.json"
 # Export a working Wan 2.2 T2V + LoRA workflow from ComfyUI as API JSON.
 # Wan 2.2 uses a T5-based text encoder, NOT CLIP.
 # Node IDs below are placeholders — update them to match YOUR workflow.
 
 PATCH_FIELDS = {
-    "prompt":        ("6", ["inputs", "text"]),
-    "neg_prompt":    ("7", ["inputs", "text"]),
-    "seed":          ("3", ["inputs", "seed"]),
-    "lora_path":     ("4", ["inputs", "lora_path"]),
-    "lora_strength": ("4", ["inputs", "strength"]),
-    "filename":      ("9", ["inputs", "filename_prefix"]),
+    "prompt":            ("6", ["inputs", "text"]),
+    "neg_prompt":        ("7", ["inputs", "text"]),
+    "seed":              ("3", ["inputs", "seed"]),
+    "lora_path_high":    ("4", ["inputs", "lora_path"]),
+    "lora_strength_high":("4", ["inputs", "strength"]),
+    "lora_path_low":     ("10", ["inputs", "lora_path"]),
+    "lora_strength_low": ("10", ["inputs", "strength"]),
+    "filename":          ("9", ["inputs", "filename_prefix"]),
 }
 
 
-def build_workflow(prompt: str, seed: int, category: str, cfg: float = 4.0) -> dict:
+def build_workflow(prompt: str, seed: int, category: str) -> dict:
     if not WORKFLOW_TEMPLATE_PATH.exists():
         raise FileNotFoundError(
             f"Workflow template not found at {WORKFLOW_TEMPLATE_PATH}. "
@@ -56,7 +49,10 @@ def build_workflow(prompt: str, seed: int, category: str, cfg: float = 4.0) -> d
         "prompt": prompt,
         "neg_prompt": "blurry, low quality, watermark, text, distorted",
         "seed": seed,
-        "lora_path": f"{lora_base}_high.safetensors",
+        "lora_path_high": f"{lora_base}_high.safetensors",
+        "lora_strength_high": 0.75,
+        "lora_path_low": f"{lora_base}_low.safetensors",
+        "lora_strength_low": 0.75,
         "filename": f"synthetic_{category}",
     }
     for key, value in patches.items():

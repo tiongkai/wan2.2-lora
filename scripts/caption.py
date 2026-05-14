@@ -1,7 +1,8 @@
-import subprocess, base64, json, textwrap
+import subprocess, base64, textwrap
 from pathlib import Path
 import requests
 from tqdm import tqdm
+from scripts.utils import probe_duration
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "qwen2.5vl:7b"
@@ -22,16 +23,6 @@ CATEGORY_CONTEXT = {
     "stabbing":  "The clip shows an armed blade attack.",
     "shooting":  "The clip shows a firearm being used or brandished.",
 }
-
-
-def probe_duration(path: Path) -> float:
-    result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", str(path)],
-        capture_output=True, text=True, check=True
-    )
-    streams = json.loads(result.stdout).get("streams", [])
-    video_streams = [s for s in streams if s.get("codec_type") == "video"]
-    return float(video_streams[0]["duration"]) if video_streams else 0.0
 
 
 def extract_multi_keyframes(clip: Path, n_frames: int = 5, out_dir: Path = None) -> list[Path]:
