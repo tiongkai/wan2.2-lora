@@ -1,0 +1,14 @@
+[general]
+caption_extension = ".txt"
+batch_size = 1
+enable_bucket = false
+
+[[datasets]]
+video_directory = "datasets/processed/shooting"
+cache_directory = "datasets/processed/shooting/cache"
+frame_extraction = "uniform"
+source_fps = 24.0
+target_frames = [33]
+max_frames = 33
+resolution = [512, 768]
+caption_dropout_rate = 0.05
