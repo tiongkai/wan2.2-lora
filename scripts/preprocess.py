@@ -43,7 +43,7 @@ def has_scene_cut(path: Path, threshold: float = 27.0) -> bool:
 def process_category(raw_dir: Path, out_dir: Path,
                      min_seconds: float = 2.0, max_seconds: float = 5.0):
     out_dir.mkdir(parents=True, exist_ok=True)
-    clips = list(raw_dir.glob("*.mp4")) + list(raw_dir.glob("*.mov"))
+    clips = list(raw_dir.glob("*.mp4")) + list(raw_dir.glob("*.mov")) + list(raw_dir.glob("*.avi"))
     accepted, rejected = 0, 0
     for clip in tqdm(clips, desc=f"Processing {raw_dir.name}"):
         if not is_valid_clip(clip, min_seconds):
@@ -52,7 +52,7 @@ def process_category(raw_dir: Path, out_dir: Path,
         if has_scene_cut(clip):
             rejected += 1
             continue
-        dst = out_dir / clip.name
+        dst = out_dir / (clip.stem + ".mp4")
         trim_clip(clip, dst, max_seconds=max_seconds)
         accepted += 1
     print(f"{raw_dir.name}: {accepted} accepted, {rejected} rejected")
@@ -63,9 +63,12 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--category", required=True,
                    choices=["fighting", "vandalism", "stabbing", "shooting"])
+    p.add_argument("--raw-dir", type=Path, default=None,
+                   help="Override raw clips directory (default: datasets/raw/<category>)")
     args = p.parse_args()
     base = Path(__file__).parent.parent
+    raw_dir = args.raw_dir or (base / "datasets" / "raw" / args.category)
     process_category(
-        raw_dir=base / "datasets" / "raw" / args.category,
+        raw_dir=raw_dir,
         out_dir=base / "datasets" / "processed" / args.category,
     )

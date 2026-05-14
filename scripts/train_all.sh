@@ -8,11 +8,11 @@ set -e
 MUSUBI="$(cd "$(dirname "$0")/../.." && pwd)/musubi-tuner"
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Model paths — verify these match your download after Task 1 Step 4
-DIT_HIGH="$BASE_DIR/models/wan2.2-t2v/wan2.2_t2v_high_noise_14B_fp16.safetensors"
-DIT_LOW="$BASE_DIR/models/wan2.2-t2v/wan2.2_t2v_low_noise_14B_fp16.safetensors"
-VAE="$BASE_DIR/models/wan2.2-t2v/wan_2.1_vae.safetensors"
-T5="$BASE_DIR/models/wan2.2-t2v/models_t5_umt5-xxl-enc-bf16.pth"
+# Model paths — Comfy-Org repackaged weights (downloaded via huggingface-cli)
+DIT_HIGH="$BASE_DIR/models/wan2.2-t2v/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp16.safetensors"
+DIT_LOW="$BASE_DIR/models/wan2.2-t2v/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp16.safetensors"
+VAE="$BASE_DIR/models/wan2.2-t2v/split_files/vae/wan_2.1_vae.safetensors"
+T5="$BASE_DIR/models/wan2.2-t2v/split_files/text_encoders/umt5_xxl_fp16.safetensors"
 
 COMMON_ARGS=(
   --task t2v-A14B
@@ -33,12 +33,10 @@ train_category() {
   local name="${category}_lora_r32"
 
   echo "===== Pre-caching: $category ====="
-  uv run python "$MUSUBI/cache_latents.py" \
-    --task t2v-A14B --dit "$DIT_HIGH" --vae "$VAE" \
-    --dataset_config "$config"
-  uv run python "$MUSUBI/cache_text_encoder_outputs.py" \
-    --task t2v-A14B --t5xxl "$T5" \
-    --dataset_config "$config"
+  uv run python "$MUSUBI/src/musubi_tuner/wan_cache_latents.py" \
+    --dataset_config "$config" --vae "$VAE"
+  uv run python "$MUSUBI/src/musubi_tuner/wan_cache_text_encoder_outputs.py" \
+    --dataset_config "$config" --t5 "$T5" --batch_size 16
 
   echo "===== Training $category — high-noise (GPU 0) + low-noise (GPU 1) ====="
   CUDA_VISIBLE_DEVICES=0 uv run accelerate launch \

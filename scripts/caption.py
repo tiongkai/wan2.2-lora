@@ -1,11 +1,11 @@
-import subprocess, base64, textwrap
+import os, subprocess, base64, textwrap
 from pathlib import Path
 import requests
 from tqdm import tqdm
 from scripts.utils import probe_duration
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5vl:7b"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "hf.co/OBLITERATUS/gemma-4-E4B-it-OBLITERATED:Q4_K_M")
 
 CAPTION_SYSTEM = textwrap.dedent("""
     You are a dataset annotation assistant for a computer vision security system.
@@ -63,7 +63,7 @@ def query_vlm(frames: list[Path], trigger: str, category: str, clip_duration: fl
         "images": [_image_to_b64(f) for f in frames],
         "stream": False,
     }
-    resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
+    resp = requests.post(OLLAMA_URL, json=payload, timeout=600)
     resp.raise_for_status()
     return resp.json()["response"].strip()
 
