@@ -1,0 +1,8 @@
+datasets/raw/**/*.mp4
+datasets/raw/**/*.mov
+datasets/raw/**/*.avi
+datasets/processed/**/*.mp4
+generated/**/*.mp4
+.venv/
+__pycache__/
+*.pyc
