@@ -35,10 +35,14 @@ def probe_duration(path: Path) -> float:
 
 
 def extract_multi_keyframes(clip: Path, n_frames: int = 5, out_dir: Path = None) -> list[Path]:
-    """Extract frames at 10%, 25%, 50%, 75%, 90% of clip duration."""
+    """Extract n_frames evenly spaced between 10% and 90% of clip duration."""
     out_dir = out_dir or clip.parent
     duration = probe_duration(clip)
-    positions = [duration * p for p in [0.10, 0.25, 0.50, 0.75, 0.90]]
+    if n_frames == 1:
+        positions = [duration * 0.5]
+    else:
+        step = 0.8 / (n_frames - 1)
+        positions = [duration * (0.1 + step * i) for i in range(n_frames)]
     frames = []
     for i, pos in enumerate(positions):
         frame_path = out_dir / f"{clip.stem}_kf{i}.jpg"

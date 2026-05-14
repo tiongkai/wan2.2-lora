@@ -19,6 +19,19 @@ def test_extract_multi_keyframes_creates_jpgs(tmp_path):
         assert f.suffix == ".jpg"
 
 
+def test_extract_keyframes_respects_n_frames(tmp_path):
+    import subprocess
+    src = tmp_path / "clip.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "lavfi",
+        "-i", "color=c=green:s=640x480:r=24:d=3",
+        "-c:v", "mpeg4", str(src)
+    ], check=True, capture_output=True)
+    from scripts.caption import extract_multi_keyframes
+    frames = extract_multi_keyframes(src, n_frames=3, out_dir=tmp_path)
+    assert len(frames) == 3
+
+
 def test_build_caption_injects_trigger():
     from scripts.caption import build_caption
     raw = "Two people fighting on the street."
