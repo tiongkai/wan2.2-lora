@@ -1,4 +1,4 @@
-import subprocess, json, shutil
+import subprocess, json, re
 from pathlib import Path
 from tqdm import tqdm
 
@@ -9,7 +9,8 @@ def probe_duration(path: Path) -> float:
         capture_output=True, text=True, check=True
     )
     streams = json.loads(result.stdout).get("streams", [])
-    return float(streams[0]["duration"]) if streams else 0.0
+    video_streams = [s for s in streams if s.get("codec_type") == "video"]
+    return float(video_streams[0]["duration"]) if video_streams else 0.0
 
 
 def is_valid_clip(path: Path, min_seconds: float = 2.0) -> bool:
@@ -38,10 +39,14 @@ def has_scene_cut(path: Path, threshold: float = 27.0) -> bool:
         "python", "-m", "scenedetect",
         "-i", str(path),
         "detect-adaptive", f"--threshold={threshold}",
-        "list-scenes"
+        "list-scenes", "-n"
     ], capture_output=True, text=True)
-    lines = [l for l in result.stdout.splitlines() if "Scene" in l and "1 " not in l]
-    return len(lines) > 0
+    if result.returncode != 0:
+        raise RuntimeError(f"scenedetect failed on {path}: {result.stderr[:200]}")
+    m = re.search(r"Detected (\d+) scenes", result.stdout)
+    if not m:
+        raise RuntimeError(f"Could not parse scenedetect output for {path}")
+    return int(m.group(1)) > 1
 
 
 def process_category(raw_dir: Path, out_dir: Path,
