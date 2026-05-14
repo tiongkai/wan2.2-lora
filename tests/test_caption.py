@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -47,4 +46,15 @@ def test_caption_file_written(tmp_path):
     write_caption_file(clip, "fght99, two people fighting in a parking lot")
     txt = tmp_path / "test.txt"
     assert txt.exists()
-    assert txt.read_text().startswith("fght99,")
+    assert txt.read_text(encoding="utf-8").startswith("fght99,")
+
+
+def test_build_caption_no_double_prepend():
+    from scripts.caption import build_caption
+    already = "fght99, person running in parking lot"
+    result = build_caption(already, trigger="fght99")
+    assert result == already
+    # Also test capitalised variant doesn't double-prepend
+    capitalised = "Fght99, person running in parking lot"
+    result2 = build_caption(capitalised, trigger="fght99")
+    assert not result2.startswith("fght99, Fght99")

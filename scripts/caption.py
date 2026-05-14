@@ -60,7 +60,7 @@ def _image_to_b64(path: Path) -> str:
 
 def query_vlm(frames: list[Path], trigger: str, category: str, clip_duration: float) -> str:
     prompt = (
-        f"These 5 frames are sampled sequentially from a {clip_duration:.1f}s security camera video. "
+        f"These {len(frames)} frames are sampled sequentially from a {clip_duration:.1f}s security camera video. "
         f"Trigger word: '{trigger}'. "
         f"Context: {CATEGORY_CONTEXT.get(category, '')} "
         "Describe the complete action sequence starting with the trigger word."
@@ -79,14 +79,14 @@ def query_vlm(frames: list[Path], trigger: str, category: str, clip_duration: fl
 
 def build_caption(raw_text: str, trigger: str) -> str:
     text = raw_text.strip()
-    if not text.startswith(trigger):
+    if not text.lower().startswith(trigger.lower()):
         text = f"{trigger}, {text}"
     return text
 
 
 def write_caption_file(clip: Path, caption: str):
     txt = clip.with_suffix(".txt")
-    txt.write_text(caption)
+    txt.write_text(caption, encoding="utf-8")
 
 
 def caption_directory(processed_dir: Path, trigger: str, category: str):
@@ -95,17 +95,19 @@ def caption_directory(processed_dir: Path, trigger: str, category: str):
         txt = clip.with_suffix(".txt")
         if txt.exists():
             continue  # skip already captioned
-        frames = extract_multi_keyframes(clip, n_frames=5)
+        frames = []
         try:
+            frames = extract_multi_keyframes(clip, n_frames=5)
             duration = probe_duration(clip)
             raw = query_vlm(frames, trigger=trigger, category=category, clip_duration=duration)
             caption = build_caption(raw, trigger=trigger)
         except Exception as e:
             print(f"  WARN: VLM failed for {clip.name}: {e}")
-            caption = f"{trigger}, security camera footage, threat event, outdoor environment"
+            caption = f"{trigger}, security camera footage"
+        finally:
+            for f in frames:
+                f.unlink(missing_ok=True)
         write_caption_file(clip, caption)
-        for f in frames:
-            f.unlink(missing_ok=True)  # clean up temp frames
 
 
 TRIGGERS = {
