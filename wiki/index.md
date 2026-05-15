@@ -53,3 +53,4 @@ Content catalog for the Wan 2.2 LoRA Training Wiki. Read this first on every que
 - [Training Tools Comparison](synthesis/training-tools-comparison.md) — Side-by-side: musubi-tuner vs AI Toolkit vs diffusion-pipe. Features, VRAM, workflow, recommendations.
 - [Wan 2.1 vs Wan 2.2](synthesis/wan21-vs-wan22.md) — Architecture, parameters, workflow, and migration guide.
 - [Plan Critique: Revised Configs](synthesis/plan-critique-revised-configs.md) — Corrected AI Toolkit configs for violence detection LoRA plan. Fixes: dual-noise, resolution, rank, LR, captioning, regularization.
+- [Uncensored Wan 2.2 Models](synthesis/uncensored-wan22-models.md) — Community uncensored models: Wan2.2-Remix NSFW (custom text encoder), fighting LoRAs, AllInOne checkpoints. Generation pipeline implications.
