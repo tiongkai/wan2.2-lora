@@ -12,12 +12,13 @@ BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIT_HIGH="$BASE_DIR/models/wan2.2-t2v/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp16.safetensors"
 DIT_LOW="$BASE_DIR/models/wan2.2-t2v/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp16.safetensors"
 VAE="$BASE_DIR/models/wan2.2-t2v/split_files/vae/wan_2.1_vae.safetensors"
-T5="$BASE_DIR/models/wan2.2-t2v/split_files/text_encoders/umt5_xxl_fp16.safetensors"
+T5="$BASE_DIR/models/wan2.2-t2v/models_t5_umt5-xxl-enc-bf16.pth"
 
 COMMON_ARGS=(
   --task t2v-A14B
   --vae "$VAE"
-  --sdpa --mixed_precision bf16 --fp8_base
+  --sdpa --mixed_precision fp16 --fp8_base
+  --blocks_to_swap 20
   --optimizer_type adamw8bit
   --gradient_checkpointing
   --network_module networks.lora_wan --network_dim 32 --network_alpha 32
@@ -40,7 +41,7 @@ train_category() {
 
   echo "===== Training $category — high-noise (GPU 0) + low-noise (GPU 1) ====="
   CUDA_VISIBLE_DEVICES=0 uv run accelerate launch \
-    --num_cpu_threads_per_process 1 --mixed_precision bf16 \
+    --num_cpu_threads_per_process 1 --mixed_precision fp16 \
     "$MUSUBI/src/musubi_tuner/wan_train_network.py" \
     "${COMMON_ARGS[@]}" \
     --dit "$DIT_HIGH" \
@@ -52,7 +53,7 @@ train_category() {
     --log_with tensorboard --logging_dir "$BASE_DIR/logs/$category" &
 
   CUDA_VISIBLE_DEVICES=1 uv run accelerate launch \
-    --num_cpu_threads_per_process 1 --mixed_precision bf16 \
+    --num_cpu_threads_per_process 1 --mixed_precision fp16 \
     "$MUSUBI/src/musubi_tuner/wan_train_network.py" \
     "${COMMON_ARGS[@]}" \
     --dit "$DIT_LOW" \
