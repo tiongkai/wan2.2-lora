@@ -656,6 +656,34 @@ git add scripts/caption.py tests/test_caption.py
 git commit -m "feat: VLM-based auto-captioning with trigger word injection"
 ```
 
+- [x] **Step 7: Switch to abliterated Qwen2.5-VL 7B**
+
+Standard Qwen2.5-VL 7B refuses ~74% of violence clips. Abliterated variant removes refusals.
+
+```bash
+ollama pull huihui_ai/qwen2.5-vl-abliterated:7b
+```
+
+Update `scripts/caption.py` default: `OLLAMA_MODEL = "huihui_ai/qwen2.5-vl-abliterated:7b"`
+
+Result: 84% success rate (26/31 real captions, 5 fallbacks). See Experiment 1.
+
+- [ ] **Step 8: Upgrade to Qwen3-VL 8B abliterated**
+
+Qwen2.5-VL 7B abliterated still hallucinates on some clips (describes mundane scenes instead of fighting). Qwen3-VL 8B has better spatial-temporal modeling at similar VRAM.
+
+```bash
+ollama pull huihui_ai/qwen3-vl-abliterated:8b
+```
+
+Update `scripts/caption.py` default: `OLLAMA_MODEL = "huihui_ai/qwen3-vl-abliterated:8b"`
+
+Benchmark against the 5 fallback clips and any clips with hallucinated captions. If hallucination persists, try `huihui_ai/qwen2.5-vl-abliterated:32b` (21GB, fits 24GB VRAM).
+
+- [ ] **Step 9: Generate complete comparable caption dataset**
+
+Run both standard and abliterated models on all clips. Save to `benchmarks/captions/standard/` and `benchmarks/captions/abliterated/` for quality comparison. Use the better model's output as the final training captions.
+
 ---
 
 ## Task 5: Per-Category Training Configs
