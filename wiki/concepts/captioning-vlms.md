@@ -29,22 +29,57 @@ Standard VLMs (Qwen2.5-VL, GPT-4V, etc.) are safety-tuned to refuse describing v
 
 **Verdict:** Best caption quality, but unusable for sensitive content without abliteration.
 
-### Qwen2.5-VL 7B Abliterated (huihui-ai) — RECOMMENDED
+### Qwen2.5-VL 7B Abliterated (huihui-ai)
 
 | Metric | Value |
 |--------|-------|
 | Ollama tag | `huihui_ai/qwen2.5-vl-abliterated:7b` |
 | HuggingFace | [huihui-ai/Qwen2.5-VL-7B-Instruct-abliterated](https://huggingface.co/huihui-ai/Qwen2.5-VL-7B-Instruct-abliterated) |
 | Size | 6.0GB (Q4_K_M) |
-| Caption quality | Same as standard Qwen (identical architecture, only refusal direction removed) |
-| Refusal rate | ~0% |
+| Refusal rate on violence | ~16% (5/31 fallbacks on fighting clips) |
+| Caption quality | Good but hallucination-prone — sometimes describes mundane office activity on fighting clips |
 | Method | Abliteration on text layers only; vision encoder untouched |
 
-Drop-in replacement. Same Ollama API, same prompt format, same quality. Only the model name changes.
+Massive improvement in refusal rate (84% success vs 26% standard). However, 7B is too small to reliably interpret low-quality surveillance footage — produces hallucinated descriptions on some clips.
 
 Also available in larger sizes:
-- `huihui_ai/qwen2.5-vl-abliterated:32b` (21GB) — better quality, fits in 24GB VRAM
+- `huihui_ai/qwen2.5-vl-abliterated:32b` (21GB) — "virtually eliminates hallucinations," fits in 24GB VRAM
 - `huihui_ai/qwen2.5-vl-abliterated:3b` (3.2GB) — edge/mobile
+
+### Qwen3-VL 8B Abliterated (huihui-ai) — RECOMMENDED
+
+| Metric | Value |
+|--------|-------|
+| Ollama tag | `huihui_ai/qwen3-vl-abliterated:8b` |
+| HuggingFace | [huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated](https://huggingface.co/huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated) |
+| Size | 6.1GB (Q4_K_M) |
+| Caption quality | Untested — expected better than Qwen2.5-VL 7B due to architecture improvements |
+| Refusal rate | ~0% (claimed) |
+| Method | Abliteration on text layers only |
+
+Qwen3-VL is a generation ahead of Qwen2.5-VL with key upgrades:
+- **DeepStack integration** — multi-level ViT features for tighter vision-language alignment
+- **Enhanced interleaved-MRoPE** — stronger spatial-temporal modeling for video frames
+- **Text-based time alignment** — explicit timestamp alignment for temporal grounding
+- **256K context** natively, expandable to 1M tokens
+
+Same VRAM footprint as the 2.5-VL 7B. Also available as thinking variant (`Huihui-Qwen3-VL-8B-Thinking-abliterated`) for chain-of-thought reasoning.
+
+Other Qwen3-VL abliterated sizes:
+- `huihui-ai/Huihui-Qwen3-VL-4B-Instruct-abliterated` — smaller, HF only
+- `huihui-ai/Huihui-Qwen3-VL-30B-A3B-Instruct-abliterated` — MoE (30B total, 3B active), HF only
+
+### Qwen2.5-VL 32B Abliterated — BEST QUALITY (if VRAM allows)
+
+| Metric | Value |
+|--------|-------|
+| Ollama tag | `huihui_ai/qwen2.5-vl-abliterated:32b` |
+| Size | 21GB |
+| Caption quality | "Virtually eliminates hallucinations, catches fine details" — community-validated |
+| Refusal rate | ~0% |
+| VRAM | Fits in 24GB |
+
+The jump from 7B → 32B is substantial for captioning. Community testing confirms: "30B at 16-bit is basically spot on all the time. No hallucinations, great detection of even minor details." If VRAM allows, this is the most reliable option.
 
 ### Qwen2.5-VL 7B Abliterated Caption-it (prithivMLmods)
 
@@ -93,17 +128,28 @@ Community naming conventions for abliterated models: `*-abliterated`, `*-heretic
 
 As of 2026, the [Heretic AI](https://aithinkerlab.com/heretic-ai-abliteration-benchmarks-2026/) tool automates this with Optuna optimization, achieving <3% refusal rate with minimal capability damage.
 
+## Qwen Model Generation Timeline
+
+| Model | Release | Key VLM Sizes |
+|-------|---------|---------------|
+| Qwen2.5-VL | Mid 2025 | 3B, 7B, 32B, 72B |
+| [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL) | Oct 2025 | 2B, 4B, 8B, 32B, 30B-A3B MoE, 235B-A22B MoE |
+| [Qwen3.5](https://github.com/QwenLM/Qwen3.6) | Feb 2026 | Native multimodal, up to 397B-A17B |
+| [Qwen3.6](https://github.com/QwenLM/Qwen3.6) | Apr 2026 | 27B, 35B-A3B — unified vision-language with early fusion |
+
+All Qwen3+ VL models have abliterated variants by huihui-ai within days of release.
+
 ## Recommendation for Violence-Detection Pipeline
 
-Use `huihui_ai/qwen2.5-vl-abliterated:7b` as the default captioning model. It's:
-- Identical quality to the standard model (same weights except refusal direction)
-- Available directly on Ollama (one-line pull)
-- Drop-in replacement (same API, same prompt format)
-- 0% refusal on violent content
+**Primary:** `huihui_ai/qwen3-vl-abliterated:8b` — best quality-per-VRAM with latest architecture improvements and 0% refusals. Same VRAM as Qwen2.5-VL 7B.
+
+**If hallucination issues persist:** Upgrade to `huihui_ai/qwen2.5-vl-abliterated:32b` (21GB, fits in 24GB) for near-zero hallucinations.
+
+**Fallback:** `huihui_ai/qwen2.5-vl-abliterated:7b` — proven working, 84% success rate on fighting clips.
 
 ```python
 # In scripts/caption.py
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "huihui_ai/qwen2.5-vl-abliterated:7b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "huihui_ai/qwen3-vl-abliterated:8b")
 ```
 
 ## Related

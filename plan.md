@@ -6,7 +6,7 @@
 
 **Architecture:** Each threat category gets its own LoRA trained on curated real-world reference clips; a batch generation pipeline then uses those LoRAs with varied scene prompts to produce thousands of synthetic labeled clips; a post-processing stage packages the output into ML-ready dataset formats (YOLO, classification CSV, COCO-style JSON).
 
-**Tech Stack:** Python 3.11, musubi-tuner (kohya-ss), ffmpeg-python, scenedetect, Ollama + Qwen2.5-VL 7B multi-frame (captioning), TensorBoard + W&B (monitoring), ComfyUI (inference/generation), pandas, PyYAML, tqdm, pytest
+**Tech Stack:** Python 3.11, musubi-tuner (kohya-ss), ffmpeg-python, scenedetect, Ollama + abliterated Qwen VLM (captioning — see wiki/concepts/captioning-vlms.md), TensorBoard + W&B (monitoring), ComfyUI + Wan2.2-Remix NSFW text encoder (inference/generation — see wiki/synthesis/uncensored-wan22-models.md), pandas, PyYAML, tqdm, pytest
 
 **Hardware Profiles:**
 - **24GB (RTX 3090/4090/5090):** 512×768, 33 frames, batch 1, FP8 quantization — primary target
@@ -77,7 +77,7 @@ wan2.2-lora/
 - Create: `requirements.txt`
 - Create: `scripts/setup.sh`
 
-- [ ] **Step 1: Write requirements.txt**
+- [x] **Step 1: Write requirements.txt**
 
 ```text
 ffmpeg-python==0.2.0
@@ -94,7 +94,7 @@ pillow==11.2.1
 opencv-python-headless==4.11.0.86
 ```
 
-- [ ] **Step 2: Install dependencies**
+- [x] **Step 2: Install dependencies**
 
 ```bash
 cd /Users/htx/Desktop/Projects/wan2.2-lora
@@ -105,7 +105,7 @@ pip install -r requirements.txt
 
 Expected: all packages install without errors.
 
-- [ ] **Step 3: Clone musubi-tuner alongside this project**
+- [x] **Step 3: Clone musubi-tuner alongside this project**
 
 ```bash
 cd /home/lenovo5/TiongKai/Greenfield
@@ -114,7 +114,7 @@ cd musubi-tuner
 uv pip install -r requirements.txt
 ```
 
-- [ ] **Step 4: Download Wan2.2 T2V model weights**
+- [x] **Step 4: Download Wan2.2 T2V model weights**
 
 musubi-tuner needs the native safetensors files (not diffusers format). Download from the original Wan 2.2 release:
 
@@ -133,7 +133,7 @@ Expected files musubi-tuner needs:
 
 > **Note:** Exact filenames depend on the HuggingFace repo layout — verify paths after download and update `scripts/train_all.sh` accordingly.
 
-- [ ] **Step 5: Create directory scaffold**
+- [x] **Step 5: Create directory scaffold**
 
 ```bash
 cd /Users/htx/Desktop/Projects/wan2.2-lora
@@ -144,7 +144,7 @@ mkdir -p generated/{clips,annotations}
 mkdir -p configs logs
 ```
 
-- [ ] **Step 6: Commit scaffold**
+- [x] **Step 6: Commit scaffold**
 
 ```bash
 git init
@@ -283,7 +283,7 @@ The preprocessor accepts a source directory of raw clips and outputs trimmed, re
 
 > **A100 override:** Change `width=768, height=512` to `width=1280, height=720` for full 720p training.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_preprocess.py
@@ -328,7 +328,7 @@ def test_accept_valid_clip(tmp_path):
     assert is_valid_clip(src, min_seconds=2) is True
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/htx/Desktop/Projects/wan2.2-lora
@@ -338,7 +338,7 @@ pytest tests/test_preprocess.py -v
 
 Expected: `ModuleNotFoundError: No module named 'scripts.preprocess'`
 
-- [ ] **Step 3: Implement preprocess.py**
+- [x] **Step 3: Implement preprocess.py**
 
 ```python
 # scripts/preprocess.py
@@ -419,13 +419,13 @@ if __name__ == "__main__":
     )
 ```
 
-- [ ] **Step 4: Add `__init__.py` so tests import correctly**
+- [x] **Step 4: Add `__init__.py` so tests import correctly**
 
 ```bash
 touch scripts/__init__.py
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_preprocess.py -v
@@ -433,7 +433,7 @@ pytest tests/test_preprocess.py -v
 
 Expected: 3 tests PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/preprocess.py scripts/__init__.py tests/test_preprocess.py
@@ -450,7 +450,7 @@ git commit -m "feat: clip preprocessing — trim, validate, scene-cut rejection"
 
 Captions each processed clip by extracting **5 keyframes** across the clip duration (at 10%, 25%, 50%, 75%, 90%), sending all frames to Qwen2.5-VL 7B via Ollama's multi-image API, and writing a `.txt` sidecar file with the trigger word prepended. Multi-frame captioning captures the **temporal action sequence** (approach → action → aftermath), which is critical for motion LoRAs. Fallback: GPT-5.4 for re-captioning if local VLM quality is insufficient.
 
-- [ ] **Step 1: Install and pull Ollama model**
+- [x] **Step 1: Install and pull Ollama model**
 
 ```bash
 # Install Ollama if not present: https://ollama.com
@@ -459,7 +459,7 @@ ollama pull qwen2.5vl:7b
 
 Expected: model downloads (~5GB).
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 ```python
 # tests/test_caption.py
@@ -503,7 +503,7 @@ def test_caption_file_written(tmp_path):
     assert txt.read_text().startswith("fght99,")
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 ```bash
 pytest tests/test_caption.py -v
@@ -511,7 +511,7 @@ pytest tests/test_caption.py -v
 
 Expected: `ModuleNotFoundError: No module named 'scripts.caption'`
 
-- [ ] **Step 4: Implement caption.py**
+- [x] **Step 4: Implement caption.py**
 
 ```python
 # scripts/caption.py
@@ -641,7 +641,7 @@ if __name__ == "__main__":
     )
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 pytest tests/test_caption.py -v
@@ -649,7 +649,7 @@ pytest tests/test_caption.py -v
 
 Expected: 3 tests PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/caption.py tests/test_caption.py
@@ -671,7 +671,7 @@ musubi-tuner separates dataset config (TOML) from training arguments (CLI flags)
 
 > **A100 override:** Change `resolution = [512, 768]` → `[720, 1280]` and `target_frames = [33]` → `[57]` in each dataset TOML.
 
-- [ ] **Step 1: Write fighting dataset config (template for all)**
+- [x] **Step 1: Write fighting dataset config (template for all)**
 
 ```toml
 # configs/fighting_dataset.toml
@@ -691,7 +691,7 @@ resolution = [512, 768]
 caption_dropout_rate = 0.05
 ```
 
-- [ ] **Step 2: Write vandalism dataset config**
+- [x] **Step 2: Write vandalism dataset config**
 
 ```toml
 # configs/vandalism_dataset.toml
@@ -711,7 +711,7 @@ resolution = [512, 768]
 caption_dropout_rate = 0.05
 ```
 
-- [ ] **Step 3: Write stabbing dataset config**
+- [x] **Step 3: Write stabbing dataset config**
 
 ```toml
 # configs/stabbing_dataset.toml
@@ -731,7 +731,7 @@ resolution = [512, 768]
 caption_dropout_rate = 0.05
 ```
 
-- [ ] **Step 4: Write shooting dataset config**
+- [x] **Step 4: Write shooting dataset config**
 
 ```toml
 # configs/shooting_dataset.toml
@@ -751,7 +751,7 @@ resolution = [512, 768]
 caption_dropout_rate = 0.05
 ```
 
-- [ ] **Step 5: Write train_all.sh**
+- [x] **Step 5: Write train_all.sh**
 
 ```bash
 #!/usr/bin/env bash
@@ -835,7 +835,7 @@ train_category shooting  3000
 echo "All LoRAs trained."
 ```
 
-- [ ] **Step 6: Make executable and commit**
+- [x] **Step 6: Make executable and commit**
 
 ```bash
 chmod +x scripts/train_all.sh
@@ -915,7 +915,7 @@ Monitor loss curves per category in TensorBoard. Target loss: ~0.02–0.04 at co
 
 Uses ComfyUI's HTTP API to batch-generate synthetic clips with each trained LoRA. Each prompt gets 5 generations with varied seeds to maximize diversity.
 
-- [ ] **Step 1: Write generation prompts — fighting**
+- [x] **Step 1: Write generation prompts — fighting**
 
 ```text
 # scripts/prompts/fighting.txt
@@ -932,7 +932,7 @@ fght99, schoolyard fight, distant surveillance angle, overcast outdoor lighting
 fght99, woman defending herself from attacker in stairwell, low-angle security camera
 ```
 
-- [ ] **Step 2: Write generation prompts — vandalism**
+- [x] **Step 2: Write generation prompts — vandalism**
 
 ```text
 # scripts/prompts/vandalism.txt
@@ -948,7 +948,7 @@ vndl77, person breaking a park bench, CCTV angle, morning daylight
 vndl77, individual setting fire to a rubbish bin, alley security camera, night
 ```
 
-- [ ] **Step 3: Write generation prompts — stabbing**
+- [x] **Step 3: Write generation prompts — stabbing**
 
 ```text
 # scripts/prompts/stabbing.txt
@@ -964,7 +964,7 @@ stbb44, confrontation on public transport platform, overhead CCTV, evening
 stbb44, knife threat near park bench, ground-level camera, natural daylight
 ```
 
-- [ ] **Step 4: Write generation prompts — shooting**
+- [x] **Step 4: Write generation prompts — shooting**
 
 ```text
 # scripts/prompts/shooting.txt
@@ -980,7 +980,7 @@ shtn22, armed person on a rooftop, distant surveillance angle, afternoon
 shtn22, firearm brandished at ATM, bank exterior camera, nighttime
 ```
 
-- [ ] **Step 5: Implement generate.py**
+- [x] **Step 5: Implement generate.py**
 
 ```python
 # scripts/generate.py
@@ -1126,7 +1126,7 @@ if __name__ == "__main__":
                    out_dir=base / "generated" / "clips" / args.category)
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/generate.py scripts/prompts/
@@ -1143,7 +1143,7 @@ git commit -m "feat: batch generation script with ComfyUI API and prompt library
 
 Reads generation manifests and ComfyUI output filenames to produce ML-ready annotation files: a unified CSV, per-clip YOLO-style action labels, and a COCO-compatible JSON.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/test_annotate.py
@@ -1189,7 +1189,7 @@ def test_class_ids_correct(tmp_path):
     assert result.iloc[0]["class_id"] == 0  # fighting = 0
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 ```bash
 pytest tests/test_annotate.py -v
@@ -1197,7 +1197,7 @@ pytest tests/test_annotate.py -v
 
 Expected: `ModuleNotFoundError: No module named 'scripts.annotate'`
 
-- [ ] **Step 3: Implement annotate.py**
+- [x] **Step 3: Implement annotate.py**
 
 ```python
 # scripts/annotate.py
@@ -1270,7 +1270,7 @@ if __name__ == "__main__":
     )
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pytest tests/test_annotate.py -v
@@ -1278,7 +1278,7 @@ pytest tests/test_annotate.py -v
 
 Expected: 3 tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/annotate.py tests/test_annotate.py
@@ -1295,7 +1295,7 @@ git commit -m "feat: annotation export — CSV, COCO JSON, class distribution"
 
 Checks every generated clip for: minimum duration, valid video stream, non-black frames, and presence in the annotation CSV.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/test_validate_dataset.py
@@ -1332,7 +1332,7 @@ def test_black_clip_fails(tmp_path):
     assert "black" in result["reason"].lower()
 ```
 
-- [ ] **Step 2: Implement validate_dataset.py**
+- [x] **Step 2: Implement validate_dataset.py**
 
 ```python
 # scripts/validate_dataset.py
@@ -1416,7 +1416,7 @@ if __name__ == "__main__":
                      index=False)
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 pytest tests/test_validate_dataset.py -v
@@ -1424,7 +1424,7 @@ pytest tests/test_validate_dataset.py -v
 
 Expected: 2 tests PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/validate_dataset.py tests/test_validate_dataset.py
@@ -1545,3 +1545,82 @@ git commit -m "feat: v1 synthetic violence detection dataset — 800 clips, 4 ca
 | Cinematic look instead of CCTV | Wan 2.2 overriding aesthetic | Add regularization clips (see Task 2), increase regularization ratio |
 | Stabbing/shooting clips too scarce | Hard to find clean source material | Use Blender/movie prop footage, screen-record licensed films |
 | Plasticky skin, loss spikes | Learning rate too high | Reduce LR from 1e-4 to 5e-5, monitor loss curve |
+| VLM refuses to caption violence | Safety filter in standard Qwen2.5-VL | Use abliterated model: `huihui_ai/qwen3-vl-abliterated:8b` (see Experiment Log) |
+| VLM hallucinates mundane scenes | 7B model too small for low-quality surveillance footage | Upgrade to 32B abliterated or Qwen3-VL 8B (see Experiment Log) |
+| Generation produces mild/ambiguous violence | Standard T5 text encoder softens violent prompts | Use Wan2.2-Remix NSFW text encoder (see wiki) |
+
+---
+
+## Experiment Log
+
+Findings from captioning and model experiments conducted during implementation. Reproducible via scripts in `benchmarks/`.
+
+### Experiment 1: VLM Refusal Rates (2026-05-14)
+
+**Problem:** Standard Qwen2.5-VL 7B refuses to describe ~74% of fighting clips.
+
+**Setup:** 31 preprocessed fighting clips, 5-frame multi-image captioning via Ollama.
+
+| Model | Ollama Tag | Real Captions | Fallback | Success Rate |
+|---|---|---|---|---|
+| Qwen2.5-VL 7B (standard) | `qwen2.5vl:7b` | 8/31 | 23/31 | 26% |
+| Qwen2.5-VL 7B (abliterated) | `huihui_ai/qwen2.5-vl-abliterated:7b` | 26/31 | 5/31 | 84% |
+
+**Conclusion:** Abliterated model is a drop-in replacement with 3.2× better success rate on violent content.
+
+**Script:** `benchmarks/benchmark_captions.py`
+
+### Experiment 2: Prompt Style vs Safety Filter (2026-05-15)
+
+**Problem:** Can prompt engineering bypass refusals without switching models?
+
+**Setup:** 3 clips that standard Qwen refused, tested with 3 prompt styles.
+
+| Style | Success | Avg Words | Trigger Compliance | Notes |
+|---|---|---|---|---|
+| Original ("physical altercation") | 2/3 | 89 | 0% | Still some refusals |
+| Neutral ("body movements") | 0/3 | — | — | All timed out |
+| Clinical ("Person A/B pose estimation") | 3/3 | 60 | 100% | Never refused, less detailed |
+
+**Conclusion:** Clinical framing bypasses standard Qwen's safety filter but produces shorter, less vivid captions. Abliterated model is the better solution.
+
+**Script:** `benchmarks/prompt_styles.py`
+
+### Experiment 3: Gemma 4 E4B OBLITERATED (2026-05-14)
+
+**Problem:** Can an uncensored non-Qwen VLM produce better captions?
+
+**Setup:** Gemma 4 E4B with safety guardrails removed, tested via transformers (Ollama couldn't load it).
+
+| Metric | Qwen2.5-VL 7B | Gemma 4 E4B OBLITERATED |
+|---|---|---|
+| Success rate | 6/6 (same clips) | 6/6 |
+| Avg words | 80 | 21 |
+| Avg temporal words | 3.7 | 0.2 |
+| Response time | 133s | 12s |
+
+**Conclusion:** Not viable. 4B params too small — produces hallucinated URLs, timestamps, and nonsensical output regardless of prompting. Fast but useless.
+
+### Experiment 4: Caption Hallucination at 7B (2026-05-15)
+
+**Problem:** Abliterated Qwen2.5-VL 7B sometimes hallucinates mundane scenes on fighting clips (e.g., describing "bending down to pick something up" on a fighting clip).
+
+**Root cause:** 7B is too small to reliably interpret low-quality surveillance footage.
+
+**Identified upgrades (not yet tested):**
+- `huihui_ai/qwen3-vl-abliterated:8b` (6.1GB) — newer architecture with better spatial-temporal modeling
+- `huihui_ai/qwen2.5-vl-abliterated:32b` (21GB) — "virtually eliminates hallucinations," fits in 24GB
+
+**Next step:** Pull and benchmark Qwen3-VL 8B abliterated on the clips that got bad captions.
+
+### Experiment 5: Uncensored Wan 2.2 Generation Models (2026-05-15)
+
+**Problem:** Will the standard Wan 2.2 text encoder soften violence prompts during generation?
+
+**Finding:** Community has solved this with [Wan2.2-Remix NSFW](https://huggingface.co/FX-FeiHou/wan2.2-Remix) — a custom text encoder (`nsfw_wan_umt5-xxl_bf16.safetensors`) that removes content restrictions.
+
+**Also found:** [LuisaP WAN 2.2 VIDEOGAME FIGHTING](https://civitai.com/models/2093652/luisap-wan-22-videogame-fighting) — an existing fighting LoRA on CivitAI (I2V, high-noise only, trigger `FIGHTSCENE`). Validates that Wan 2.2 can learn fighting motion from a LoRA.
+
+**Recommendation:** Train LoRAs on standard Wan 2.2 weights, generate synthetic clips using Remix NSFW text encoder.
+
+**Details:** See `wiki/synthesis/uncensored-wan22-models.md`
