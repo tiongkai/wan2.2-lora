@@ -1,0 +1,161 @@
+{
+  "Qwen 2.5 VL 7B (Ollama)": [
+    {
+      "clip": "1dsLuL5Lvbc_1",
+      "caption": "fght99, A man in a blue shirt and black pants is seen pushing another man in a black shirt and black pants. The man in the black shirt is pushed against a refrigerator and falls to the floor. The man in the blue shirt continues to push the man in the black shirt.",
+      "time_s": 188.2,
+      "success": true,
+      "word_count": 53,
+      "has_trigger": true,
+      "temporal_words": 2,
+      "temporal_examples": [
+        "falls",
+        "continues"
+      ],
+      "is_fallback": false
+    },
+    {
+      "clip": "4RqDG4I4iAk_2",
+      "caption": "fght99, The fight begins with a man in a plaid shirt pushing another man in a dark jacket. The man in the plaid shirt then throws a punch at the man in the dark jacket, who retaliates with a punch of his own. The man in the plaid shirt then kicks the man in the dark jacket, who falls to the ground. The man in the plaid shirt then continues to punch the man in the dark jacket, who is now on the ground. The man in the plaid shirt then stands over the man in the dark jacket, who is still on the ground.",
+      "time_s": 127.8,
+      "success": true,
+      "word_count": 105,
+      "has_trigger": true,
+      "temporal_words": 9,
+      "temporal_examples": [
+        "begins",
+        "then",
+        "throws",
+        "then",
+        "kicks"
+      ],
+      "is_fallback": false
+    },
+    {
+      "clip": "8pKKdS7rhXo_0",
+      "caption": "fght99, The inmate in orange jumpsuit lunges forward, grabbing the officer's arm. The officer resists, pushing the inmate back. The inmate falls to the ground, landing on his back. The officer stands over him, appearing to regain control.",
+      "time_s": 107.3,
+      "success": true,
+      "word_count": 38,
+      "has_trigger": true,
+      "temporal_words": 2,
+      "temporal_examples": [
+        "lunges",
+        "falls"
+      ],
+      "is_fallback": false
+    },
+    {
+      "clip": "HVSv9sgz2ZI_0",
+      "caption": "fght99, The crowd is engaged in a physical altercation. A man in a red vest is seen pushing another man in a white shirt. The man in the white shirt falls to the ground. The man in the red vest continues to push him down. Other people in the crowd are seen trying to intervene and pull the man in the red vest away. The man in the white shirt is seen lying on the ground, while the man in the red vest is still standing over him.",
+      "time_s": 119.6,
+      "success": true,
+      "word_count": 88,
+      "has_trigger": true,
+      "temporal_words": 2,
+      "temporal_examples": [
+        "falls",
+        "continues"
+      ],
+      "is_fallback": false
+    },
+    {
+      "clip": "kExp3yhspR0_2",
+      "caption": "fght99, The man in the black jacket is seen leaning forward, extending his arm towards the cashier, who is seated behind the counter. The cashier is holding a small object, possibly a phone or a wallet, in her right hand. The man's arm is extended, and he appears to be in the process of grabbing or pulling the object from the cashier's hand. The cashier's body is slightly turned towards the man, and she seems to be trying to maintain her grip on the object. The man's other hand is not visible in the frame. The scene takes place in a convenience store, with shelves of products visible in the background. The lighting is bright, and the camera angle is from a slightly elevated position, providing a clear view of the interaction between the man and the cashier.",
+      "time_s": 139.3,
+      "success": true,
+      "word_count": 138,
+      "has_trigger": true,
+      "temporal_words": 0,
+      "temporal_examples": [],
+      "is_fallback": false
+    },
+    {
+      "clip": "r8PX3ZJ1_II_0",
+      "caption": "fght99, A man in a black jacket and blue beanie is seen standing near a counter. Another man in a black jacket and green beanie is seen walking towards the first man. The second man then punches the first man in the face. The first man falls to the ground. The second man then walks away.",
+      "time_s": 116.3,
+      "success": true,
+      "word_count": 56,
+      "has_trigger": true,
+      "temporal_words": 7,
+      "temporal_examples": [
+        "first",
+        "then",
+        "first",
+        "first",
+        "falls"
+      ],
+      "is_fallback": false
+    }
+  ],
+  "Gemma 4 E4B OBLITERATED (transformers)": [
+    {
+      "clip": "1dsLuL5Lvbc_1",
+      "caption": "fght99, }\n\n```json\n[\n  {\"frame\": 1, \"occluded\": false, \"ideo\": \"male\", \"occluded_box\": [], \"occlusion_box\": [166, 502, 560, 639]},\n  {\"frame\": 2, \"occluded\": false, \"ideo\": \"male\", \"box\": [199, 604, 614, 754]},\n  {\"occluded\": false, \"ideo\": \"male\", \"box\": [689, 320, 770, 439]}}\n]\n```\n```json\n[3",
+      "time_s": 45.8,
+      "success": true,
+      "word_count": 41,
+      "has_trigger": true,
+      "temporal_words": 0,
+      "temporal_examples": [],
+      "is_fallback": false
+    },
+    {
+      "clip": "4RqDG4I4iAk_2",
+      "caption": "fght99, ",
+      "time_s": 0.6,
+      "success": true,
+      "word_count": 1,
+      "has_trigger": true,
+      "temporal_words": 0,
+      "temporal_examples": [],
+      "is_fallback": false
+    },
+    {
+      "clip": "8pKKdS7rhXo_0",
+      "caption": "fght99, - 10:00 - bodies strewn around the room, everyone looks stunned.\n- 10:15 - two men attack a third man, bodies are everywhere.\n- 30:00 - two men fight on the ground.\n\n  - 5:00 - everyone is dead.\n\n---\n- 5:00 - all 5 people are gone.\n\nPrint the 5-year time stamp on the top left corner of the first frame.",
+      "time_s": 9.7,
+      "success": true,
+      "word_count": 62,
+      "has_trigger": true,
+      "temporal_words": 1,
+      "temporal_examples": [
+        "first"
+      ],
+      "is_fallback": false
+    },
+    {
+      "clip": "HVSv9sgz2ZI_0",
+      "caption": "fght99, }",
+      "time_s": 0.7,
+      "success": true,
+      "word_count": 2,
+      "has_trigger": true,
+      "temporal_words": 0,
+      "temporal_examples": [],
+      "is_fallback": false
+    },
+    {
+      "clip": "kExp3yhspR0_2",
+      "caption": "fght99, EOF\n\n```json\n{\"metadata\": {\"file_name\": \"ren02.mp4\", \"frame_num\": 5, \"heat_map\": \"dee1a1995e3a72204c1116790d5b6808\", \"width\": 1263, \"height\": 720}, \"video_need_crop\": true}\n```\n\n</html>\n```",
+      "time_s": 11.7,
+      "success": true,
+      "word_count": 19,
+      "has_trigger": true,
+      "temporal_words": 0,
+      "temporal_examples": [],
+      "is_fallback": false
+    },
+    {
+      "clip": "r8PX3ZJ1_II_0",
+      "caption": "fght99, }\n\nlen_of_a_quarter_nugget_is_2cm_wide_and_cm_long}",
+      "time_s": 3.8,
+      "success": true,
+      "word_count": 3,
+      "has_trigger": true,
+      "temporal_words": 0,
+      "temporal_examples": [],
+      "is_fallback": false
+    }
+  ]
+}

@@ -5,7 +5,7 @@ from tqdm import tqdm
 from scripts.utils import probe_duration
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "hf.co/OBLITERATUS/gemma-4-E4B-it-OBLITERATED:Q4_K_M")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "huihui_ai/qwen2.5-vl-abliterated:7b")
 
 CAPTION_SYSTEM = textwrap.dedent("""
     You are a dataset annotation assistant for a computer vision security system.
