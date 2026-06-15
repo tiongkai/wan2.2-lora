@@ -1,0 +1,5 @@
+- [Wan2.2 training VRAM config](wan22-training-vram-config.md) — blocks_to_swap=30 + expandable_segments needed to avoid OOM on the 2× A5500 24GB rig; use scripts/train_category.sh
+- [Wan2.2 generation: stock models](wan22-generation-stock-models.md) — generate with stock Wan2.2 + trained LoRA, NOT the uncensored Remix NSFW encoder
+- [ComfyUI generation setup](comfyui-generation-setup.md) — ComfyUI at Greenfield/ComfyUI, run_comfyui.sh + generate.py, dual-expert T2V workflow JSON
+- [I2V LoRA training](i2v-lora-training.md) — train_i2v_category.sh on Wan2.2 I2V-A14B; --i2v is caching-only; no CLIP model needed
+- [Portable memory in repo](portable-memory-in-repo.md) — keep HANDOFF.md + docs/session-memory/ in the wan2.2-lora repo current for cross-machine continuity

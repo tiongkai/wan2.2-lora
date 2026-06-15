@@ -6,3 +6,11 @@ generated/**/*.mp4
 .venv/
 __pycache__/
 *.pyc
+
+# Large binaries — transfer separately, do NOT commit (keep repo portable)
+models/
+loras/
+logs/
+*.safetensors
+*.pth
+*.ckpt
