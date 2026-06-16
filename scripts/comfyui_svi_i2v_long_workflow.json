@@ -1,0 +1,358 @@
+{
+ "11": {
+  "class_type": "LoadWanVideoT5TextEncoder",
+  "inputs": {
+   "model_name": "umt5_xxl_fp16.safetensors",
+   "precision": "bf16",
+   "load_device": "offload_device",
+   "quantization": "disabled"
+  },
+  "_meta": {
+   "title": "Load T5 Text Encoder"
+  }
+ },
+ "16": {
+  "class_type": "WanVideoTextEncode",
+  "inputs": {
+   "positive_prompt": "two inmates in brown jumpsuits fighting, one throwing a punch at the other who staggers backward against the blue payphones, jail phone area, cinder-block wall, elevated surveillance camera, bright fluorescent lighting",
+   "negative_prompt": "\u8272\u8c03\u8273\u4e3d, \u8fc7\u66dd, \u9759\u6001, \u7ec6\u8282\u6a21\u7cca\u4e0d\u6e05, \u5b57\u5e55, \u98ce\u683c, \u4f5c\u54c1, \u753b\u4f5c, \u753b\u9762, \u9759\u6b62, \u6574\u4f53\u53d1\u7070, \u6700\u5dee\u8d28\u91cf, \u4f4e\u8d28\u91cf, JPEG\u538b\u7f29\u6b8b\u7559, \u4e11\u964b\u7684, \u6b8b\u7f3a\u7684, \u591a\u4f59\u7684\u624b\u6307, \u753b\u5f97\u4e0d\u597d\u7684\u624b\u90e8, \u753b\u5f97\u4e0d\u597d\u7684\u8138\u90e8, \u7578\u5f62\u7684, \u6bc1\u5bb9\u7684, \u5f62\u6001\u7578\u5f62\u7684\u80a2\u4f53, \u624b\u6307\u878d\u5408, \u9759\u6b62\u4e0d\u52a8\u7684\u753b\u9762, \u6742\u4e71\u7684\u80cc\u666f, \u4e09\u6761\u817f, \u80cc\u666f\u4eba\u5f88\u591a, \u5012\u7740\u8d70",
+   "force_offload": true,
+   "use_disk_cache": false,
+   "device": "gpu",
+   "t5": [
+    "11",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Text Encode"
+  }
+ },
+ "38": {
+  "class_type": "WanVideoVAELoader",
+  "inputs": {
+   "model_name": "wan_2.1_vae.safetensors",
+   "precision": "bf16"
+  },
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "39": {
+  "class_type": "WanVideoBlockSwap",
+  "inputs": {
+   "blocks_to_swap": 30,
+   "offload_img_emb": false,
+   "offload_txt_emb": false,
+   "use_non_blocking": false,
+   "vace_blocks_to_swap": 0,
+   "prefetch_blocks": 1,
+   "block_swap_debug": false
+  },
+  "_meta": {
+   "title": "Block Swap (VRAM)"
+  }
+ },
+ "20": {
+  "class_type": "WanVideoLoraSelect",
+  "inputs": {
+   "lora": "svi/SVI_v2_PRO_Wan2.2-I2V-A14B_HIGH_lora_rank_128_fp16.safetensors",
+   "strength": 1.0,
+   "low_mem_load": false,
+   "merge_loras": false
+  },
+  "_meta": {
+   "title": "LoRA HIGH - SVI Pro"
+  }
+ },
+ "21": {
+  "class_type": "WanVideoLoraSelect",
+  "inputs": {
+   "lora": "svi/Wan_2_2_I2V_A14B_HIGH_lightx2v_4step_lora_260412_rank_64_fp16.safetensors",
+   "strength": 0.5,
+   "low_mem_load": false,
+   "merge_loras": false,
+   "prev_lora": [
+    "20",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "LoRA HIGH - LightX2V"
+  }
+ },
+ "30": {
+  "class_type": "WanVideoLoraSelect",
+  "inputs": {
+   "lora": "svi/SVI_v2_PRO_Wan2.2-I2V-A14B_LOW_lora_rank_128_fp16.safetensors",
+   "strength": 1.0,
+   "low_mem_load": false,
+   "merge_loras": false
+  },
+  "_meta": {
+   "title": "LoRA LOW - SVI Pro"
+  }
+ },
+ "31": {
+  "class_type": "WanVideoLoraSelect",
+  "inputs": {
+   "lora": "svi/Wan_2_2_I2V_A14B_LOW_lightx2v_4step_lora_260412_rank_64_fp16.safetensors",
+   "strength": 1.0,
+   "low_mem_load": false,
+   "merge_loras": false,
+   "prev_lora": [
+    "30",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "LoRA LOW - LightX2V"
+  }
+ },
+ "22": {
+  "class_type": "WanVideoModelLoader",
+  "inputs": {
+   "model": "wan2.2_i2v_high_noise_14B_fp16.safetensors",
+   "base_precision": "fp16",
+   "quantization": "fp8_e4m3fn",
+   "load_device": "offload_device",
+   "attention_mode": "sdpa",
+   "block_swap_args": [
+    "39",
+    0
+   ],
+   "lora": [
+    "21",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Model Loader HIGH"
+  }
+ },
+ "71": {
+  "class_type": "WanVideoModelLoader",
+  "inputs": {
+   "model": "wan2.2_i2v_low_noise_14B_fp16.safetensors",
+   "base_precision": "fp16",
+   "quantization": "fp8_e4m3fn",
+   "load_device": "offload_device",
+   "attention_mode": "sdpa",
+   "block_swap_args": [
+    "39",
+    0
+   ],
+   "lora": [
+    "31",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Model Loader LOW"
+  }
+ },
+ "67": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "sample_832x480.png"
+  },
+  "_meta": {
+   "title": "Load Start Image"
+  }
+ },
+ "68": {
+  "class_type": "WanVideoImageResizeToClosest",
+  "inputs": {
+   "image": [
+    "67",
+    0
+   ],
+   "generation_width": 832,
+   "generation_height": 480,
+   "aspect_ratio_preservation": "crop_to_new"
+  },
+  "_meta": {
+   "title": "Resize Start Image"
+  }
+ },
+ "40": {
+  "class_type": "WanVideoEncode",
+  "inputs": {
+   "vae": [
+    "38",
+    0
+   ],
+   "image": [
+    "67",
+    0
+   ],
+   "enable_vae_tiling": false,
+   "tile_x": 272,
+   "tile_y": 272,
+   "tile_stride_x": 144,
+   "tile_stride_y": 128,
+   "noise_aug_strength": 0.0,
+   "latent_strength": 1.0
+  },
+  "_meta": {
+   "title": "Encode Anchor Image -> Latent"
+  }
+ },
+ "89": {
+  "class_type": "WanVideoSVIProEmbeds",
+  "inputs": {
+   "anchor_samples": [
+    "40",
+    0
+   ],
+   "num_frames": 241,
+   "motion_latent_count": 1
+  },
+  "_meta": {
+   "title": "SVI Pro Embeds (window 1)"
+  }
+ },
+ "27": {
+  "class_type": "WanVideoSampler",
+  "inputs": {
+   "model": [
+    "22",
+    0
+   ],
+   "image_embeds": [
+    "89",
+    0
+   ],
+   "text_embeds": [
+    "16",
+    0
+   ],
+   "steps": 6,
+   "cfg": 1.0,
+   "shift": 8.0,
+   "seed": 43,
+   "force_offload": true,
+   "scheduler": "dpm++_sde",
+   "riflex_freq_index": 0,
+   "denoise_strength": 1.0,
+   "batched_cfg": false,
+   "rope_function": "comfy",
+   "start_step": 0,
+   "end_step": 3,
+   "add_noise_to_samples": false,
+   "context_options": [
+    "100",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Sampler HIGH (steps 0-3)"
+  }
+ },
+ "90": {
+  "class_type": "WanVideoSampler",
+  "inputs": {
+   "model": [
+    "71",
+    0
+   ],
+   "image_embeds": [
+    "89",
+    0
+   ],
+   "text_embeds": [
+    "16",
+    0
+   ],
+   "samples": [
+    "27",
+    0
+   ],
+   "steps": 6,
+   "cfg": 1.0,
+   "shift": 8.0,
+   "seed": 43,
+   "force_offload": true,
+   "scheduler": "dpm++_sde",
+   "riflex_freq_index": 0,
+   "denoise_strength": 1.0,
+   "batched_cfg": false,
+   "rope_function": "comfy",
+   "start_step": 3,
+   "end_step": -1,
+   "add_noise_to_samples": false,
+   "context_options": [
+    "100",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Sampler LOW (steps 3-end)"
+  }
+ },
+ "28": {
+  "class_type": "WanVideoDecode",
+  "inputs": {
+   "vae": [
+    "38",
+    0
+   ],
+   "samples": [
+    "90",
+    0
+   ],
+   "enable_vae_tiling": false,
+   "tile_x": 272,
+   "tile_y": 272,
+   "tile_stride_x": 144,
+   "tile_stride_y": 128,
+   "normalization": "default"
+  },
+  "_meta": {
+   "title": "Decode"
+  }
+ },
+ "61": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "images": [
+    "28",
+    0
+   ],
+   "fps": 16.0
+  },
+  "_meta": {
+   "title": "Create Video"
+  }
+ },
+ "60": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "video": [
+    "61",
+    0
+   ],
+   "filename_prefix": "svi/svi_long_15s",
+   "format": "mp4",
+   "codec": "h264"
+  },
+  "_meta": {
+   "title": "Save Video"
+  }
+ },
+ "100": {
+  "class_type": "WanVideoContextOptions",
+  "_meta": {
+   "title": "Context (sliding window)"
+  },
+  "inputs": {
+   "context_schedule": "uniform_standard",
+   "context_frames": 81,
+   "context_stride": 4,
+   "context_overlap": 16,
+   "freenoise": true,
+   "verbose": false,
+   "fuse_method": "linear"
+  }
+ }
+}

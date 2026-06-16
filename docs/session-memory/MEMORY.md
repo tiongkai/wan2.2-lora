@@ -3,3 +3,5 @@
 - [ComfyUI generation setup](comfyui-generation-setup.md) — ComfyUI at Greenfield/ComfyUI, run_comfyui.sh + generate.py, dual-expert T2V workflow JSON
 - [I2V LoRA training](i2v-lora-training.md) — train_i2v_category.sh on Wan2.2 I2V-A14B; --i2v is caching-only; no CLIP model needed
 - [Portable memory in repo](portable-memory-in-repo.md) — keep HANDOFF.md + docs/session-memory/ in the wan2.2-lora repo current for cross-machine continuity
+- [Base model over LoRA](base-model-over-lora.md) — fighting LoRA shelved (blur from low-quality training data); focus on base Wan2.2 + prompts + SVI for long-form
+- [Long-video SVI setup](long-video-svi-setup.md) — WanVideoWrapper + SVI 2.0 Pro LoRAs installed; base_precision must be fp16 not fp16_fast (torch 2.6)

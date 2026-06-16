@@ -12,27 +12,33 @@ import uuid
 
 COMFYUI_URL = "http://localhost:8188"
 
+# LoRA names as ComfyUI sees them (relative to the loras dir wired in
+# ComfyUI/extra_model_paths.yaml -> wan2.2-lora/loras). "_high"/"_low" +
+# ".safetensors" are appended per expert.
 BASE_LORA_PATHS = {
-    "fighting":  "../../wan2.2-lora/loras/fighting/fighting_lora_r32",
-    "vandalism": "../../wan2.2-lora/loras/vandalism/vandalism_lora_r32",
-    "stabbing":  "../../wan2.2-lora/loras/stabbing/stabbing_lora_r32",
-    "shooting":  "../../wan2.2-lora/loras/shooting/shooting_lora_r32",
+    "fighting":  "fighting/fighting_lora_r32",
+    "vandalism": "vandalism/vandalism_lora_r32",
+    "stabbing":  "stabbing/stabbing_lora_r32",
+    "shooting":  "shooting/shooting_lora_r32",
 }
 
 WORKFLOW_TEMPLATE_PATH = Path(__file__).parent / "comfyui_wan22_t2v_workflow.json"
-# Export a working Wan 2.2 T2V + LoRA workflow from ComfyUI as API JSON.
-# Wan 2.2 uses a T5-based text encoder, NOT CLIP.
-# Node IDs below are placeholders — update them to match YOUR workflow.
+# Dual-expert (high+low noise) + dual-LoRA Wan 2.2 T2V workflow on stock models.
+# Node IDs/fields below match comfyui_wan22_t2v_workflow.json, validated against
+# ComfyUI /object_info. Wan 2.2 loads the umt5 (T5) text encoder as type=wan.
+LORA_STRENGTH = 0.75
+NEG_PROMPT = "blurry, low quality, watermark, text, distorted, static, still image"
 
 PATCH_FIELDS = {
-    "prompt":            ("6", ["inputs", "text"]),
-    "neg_prompt":        ("7", ["inputs", "text"]),
-    "seed":              ("3", ["inputs", "seed"]),
-    "lora_path_high":    ("4", ["inputs", "lora_path"]),
-    "lora_strength_high":("4", ["inputs", "strength"]),
-    "lora_path_low":     ("10", ["inputs", "lora_path"]),
-    "lora_strength_low": ("10", ["inputs", "strength"]),
-    "filename":          ("9", ["inputs", "filename_prefix"]),
+    "prompt":        ("6",  ["inputs", "text"]),
+    "neg_prompt":    ("7",  ["inputs", "text"]),
+    "seed_high":     ("19", ["inputs", "noise_seed"]),
+    "seed_low":      ("20", ["inputs", "noise_seed"]),
+    "lora_high":     ("12", ["inputs", "lora_name"]),
+    "lora_low":      ("13", ["inputs", "lora_name"]),
+    "strength_high": ("12", ["inputs", "strength_model"]),
+    "strength_low":  ("13", ["inputs", "strength_model"]),
+    "filename":      ("9",  ["inputs", "filename_prefix"]),
 }
 
 
@@ -47,13 +53,14 @@ def build_workflow(prompt: str, seed: int, category: str) -> dict:
     lora_base = BASE_LORA_PATHS[category]
     patches = {
         "prompt": prompt,
-        "neg_prompt": "blurry, low quality, watermark, text, distorted",
-        "seed": seed,
-        "lora_path_high": f"{lora_base}_high.safetensors",
-        "lora_strength_high": 0.75,
-        "lora_path_low": f"{lora_base}_low.safetensors",
-        "lora_strength_low": 0.75,
-        "filename": f"synthetic_{category}",
+        "neg_prompt": NEG_PROMPT,
+        "seed_high": seed,
+        "seed_low": seed,
+        "lora_high": f"{lora_base}_high.safetensors",
+        "lora_low": f"{lora_base}_low.safetensors",
+        "strength_high": LORA_STRENGTH,
+        "strength_low": LORA_STRENGTH,
+        "filename": f"{category}/synthetic_{category}",
     }
     for key, value in patches.items():
         if key in PATCH_FIELDS:
@@ -74,15 +81,24 @@ def queue_prompt(workflow: dict) -> str:
     return resp.json()["prompt_id"]
 
 
-def wait_for_completion(prompt_id: str, timeout: int = 300) -> bool:
+def wait_for_completion(prompt_id: str, timeout: int = 900) -> str:
+    """Poll history until the prompt finishes. Returns 'ok', 'error', or 'timeout'.
+    Presence in history is NOT success — ComfyUI records failed/OOM runs too, so
+    we inspect status.status_str and require a produced output."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         resp = requests.get(f"{COMFYUI_URL}/history/{prompt_id}", timeout=10)
-        history = resp.json()
-        if prompt_id in history:
-            return True
+        entry = resp.json().get(prompt_id)
+        if entry:
+            status = entry.get("status", {})
+            if status.get("status_str") == "error":
+                return "error"
+            # success only when completed and at least one output was saved
+            if status.get("completed") or entry.get("outputs"):
+                has_output = any(entry.get("outputs", {}).values())
+                return "ok" if has_output else "error"
         time.sleep(2)
-    return False
+    return "timeout"
 
 
 def load_prompts(category: str) -> list[str]:
@@ -102,8 +118,7 @@ def generate_batch(category: str, count: int, out_dir: Path):
         seed = random.randint(0, 2**32 - 1)
         workflow = build_workflow(prompt, seed=seed, category=category)
         prompt_id = queue_prompt(workflow)
-        success = wait_for_completion(prompt_id)
-        status = "ok" if success else "timeout"
+        status = wait_for_completion(prompt_id)
         metadata_rows.append({
             "id": i, "category": category, "prompt": prompt,
             "seed": seed, "prompt_id": prompt_id, "status": status

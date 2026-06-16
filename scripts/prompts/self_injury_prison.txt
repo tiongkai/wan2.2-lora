@@ -1,0 +1,9 @@
+# Self-injury (head-butting wall) prompts for a custodial self-harm DETECTION dataset.
+# Aligned to sample.png (prison phone-bank scene via Qwen2.5-VL caption): men in maroon
+# jumpsuits, blue payphones, numbered booths, elevated surveillance angle, institutional lighting.
+# I2V: start frame has inmates seated -> prompt drives "stand up -> headbutt wall".
+an inmate in a maroon jumpsuit stands up from the green stool and violently headbutts the concrete wall, prison phone area, elevated surveillance camera, institutional lighting
+a prisoner rises from his seat and repeatedly slams his forehead against the wall beside the blue payphones, self-harm incident, prison visitation area, overhead security camera
+an inmate stands up and begins headbutting the cinder block wall near the numbered phone booths, other inmates turning to look, prison phone bank, CCTV angle, fluorescent lighting
+a man in a maroon prison uniform gets up abruptly and bashes his head into the wall, distressed self-injury, institutional phone area, wide-angle surveillance camera
+an inmate stands and headbutts the wall over and over by the prison phones, self-harm episode, elevated security camera, bright even institutional lighting

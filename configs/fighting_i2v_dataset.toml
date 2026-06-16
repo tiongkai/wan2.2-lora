@@ -1,0 +1,15 @@
+[general]
+caption_extension = ".txt"
+batch_size = 1
+enable_bucket = false
+
+[[datasets]]
+video_directory = "datasets/processed/fighting"
+# Separate cache from the T2V run — I2V latents also store the conditioning
+# (first) frame, so they are not interchangeable with the t2v cache.
+cache_directory = "datasets/processed/fighting/cache_i2v"
+frame_extraction = "uniform"
+source_fps = 24.0
+target_frames = [33]
+max_frames = 33
+resolution = [512, 768]

@@ -1,0 +1,8 @@
+# Fight prompts aligned to sample.png (prison phone-bank scene, via Qwen2.5-VL caption):
+# prison visitation area, numbered booths with blue payphones, men in maroon jumpsuits
+# on green stools, slightly elevated surveillance angle, bright even institutional lighting.
+a violent fight breaks out at the prison phone bank, two inmates in maroon jumpsuits throwing punches at each other, elevated surveillance camera, bright institutional lighting
+an inmate suddenly attacks another over a payphone, prison visitation area, men in maroon jumpsuits grappling and slamming into the blue phones, overhead security camera
+a brawl erupts between prisoners near the numbered phone booths, inmates swinging fists and shoving each other off the green stools, CCTV angle, fluorescent lighting
+two inmates in maroon uniforms fighting violently, one tackling the other to the floor of the prison phone area, slightly elevated surveillance perspective
+a group altercation explodes at the prison phones, several inmates in jumpsuits punching and wrestling while others scatter, wide-angle institutional security camera

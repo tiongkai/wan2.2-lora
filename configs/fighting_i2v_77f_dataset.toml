@@ -1,0 +1,15 @@
+[general]
+caption_extension = ".txt"
+batch_size = 1
+enable_bucket = false
+
+[[datasets]]
+video_directory = "datasets/processed/fighting"
+# 77-frame I2V cache @ 480x832. 77 = 4*19+1 (valid Wan latent length) and fits in
+# the 80 frames a 5.0s clip yields at Wan's native 16fps (81 would need 5.06s).
+cache_directory = "datasets/processed/fighting/cache_i2v_77f"
+frame_extraction = "uniform"
+source_fps = 24.0
+target_frames = [77]
+max_frames = 77
+resolution = [480, 832]
