@@ -1,8 +1,14 @@
 import os, subprocess, base64, textwrap
 from pathlib import Path
+import sys
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import requests
 from tqdm import tqdm
 from scripts.utils import probe_duration
+from scripts.categories import TRIGGERS, enabled_categories
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "huihui_ai/qwen2.5-vl-abliterated:7b")
@@ -22,6 +28,7 @@ CATEGORY_CONTEXT = {
     "vandalism": "The clip shows property damage or defacement.",
     "stabbing":  "The clip shows an armed blade attack.",
     "shooting":  "The clip shows a firearm being used or brandished.",
+    "self_injury": "The clip shows a person harming themself or attempting self-harm.",
 }
 
 
@@ -101,18 +108,11 @@ def caption_directory(processed_dir: Path, trigger: str, category: str):
         write_caption_file(clip, caption)
 
 
-TRIGGERS = {
-    "fighting":  "fght99",
-    "vandalism": "vndl77",
-    "stabbing":  "stbb44",
-    "shooting":  "shtn22",
-}
-
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--category", required=True,
-                   choices=list(TRIGGERS.keys()))
+                   choices=enabled_categories())
     args = p.parse_args()
     base = Path(__file__).parent.parent
     caption_directory(

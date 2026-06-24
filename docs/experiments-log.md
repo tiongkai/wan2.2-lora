@@ -7,9 +7,11 @@ Rig: 2× RTX A5500 (24 GB). Last updated 2026-06-16. See also [HANDOFF.md](../HA
 ## Headline conclusions
 - **Use the base Wan2.2 model, not the trained LoRAs.** The fighting LoRA shows real motion but
   adds blur — a ceiling from the low-quality surveillance training footage, not a broken run.
-- **Long-form options:** (a) base-model extend-and-stitch = good motion sync, visible seams;
-  (b) SVI = seamless + drift-corrected, but distilled sampling may soften motion. SVI long-form
-  run still pending (only 5 s validation windows done so far).
+- **Long-form options (confirmed at 20 s):** base-model extend-and-stitch has **livelier motion &
+  scene changes** but **visible seams** every 5 s; SVI is **seamless & drift-corrected** but has
+  **weaker scene progression** (it anchors to hold consistency) — and needs full steps (no
+  LightX2V distillation) to avoid softness. Pick per use-case; for these scenes the base extend's
+  motion read better, SVI's continuity read better.
 - **Clip length cap:** a 5.0 s source clip = 80 frames at Wan's native 16 fps, so 81-frame
   training is impossible; 77 is the max valid (4n+1) length.
 
@@ -46,7 +48,12 @@ Caption quality was checked and is GOOD (detailed fight descriptions); loss conv
 | **prison_brawl_20s** | Base model extend-and-stitch, 4× 5 s I2V windows chained + concat | 720×512 | **Best motion sync** (user's benchmark); visible seams every 5 s | `generated/clips/long/prison_brawl_20s.mp4` |
 | fighting_lora_20s | 2 s fighting-LoRA chain, 10× 33f segments | 720×512 (stretched — unfair) | LoRA blur; bad (wrong aspect) | `generated/clips/long/fighting_lora_20s.mp4` |
 | fighting_lora_512x768_20s | 2 s fighting-LoRA chain, 10× 33f | 512×768 (trained dims, fair) | Still blurry → confirms data-quality ceiling | `generated/clips/long/fighting_lora_512x768_20s.mp4` |
-| (per-segment sources) | individual chain segments (3 runs) | — | inputs to the concats above | `generated/clips/long_chain/` (24, by mtime) |
+| (per-segment sources) | individual chain segments (runs) | — | inputs to the concats above | `generated/clips/long_chain/` (by mtime) |
+| **prison_brawl_svi_20s** | SVI no-distill (full 20-step) + context-options sliding window, 321f | 832×480 | Seamless 20 s; **scene changes weaker** than base brawl (user) | `generated/clips/svi/prison_brawl_svi_20s_00001_.mp4` |
+| **self_injury_base_20s** | Base extend-and-stitch, 4× 5 s, headbutt-wall prompt | 832×480 | Livelier; self-injury visible (1st attempt failed on a `--no-lora` flag bug, since fixed) | `generated/clips/long/self_injury_base_20s.mp4` |
+| **self_injury_svi_20s** | SVI no-distill + context options, 321f, headbutt-wall prompt | 832×480 | Seamless; self-injury visible | `generated/clips/svi/self_injury_svi_20s_00001_.mp4` |
+
+Long-form workflows: `scripts/comfyui_svi_i2v_long_workflow.json` (distilled), `comfyui_svi_nodistill_long_workflow.json` (full-quality), `comfyui_svi_selfinjury_long_workflow.json`. Prompts are scene-grounded (Qwen caption), single-action, kinematic. `extend_video.py` gained `--lora`/`--no-lora`/`--category`/`--strength`.
 
 ## SVI 2.0 Pro experiments (all 5 s validation windows so far)
 

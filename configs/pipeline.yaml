@@ -1,0 +1,58 @@
+paths:
+  generated_dir: generated
+  clips_dir: generated/clips
+  annotations_dir: generated/annotations
+  prompts_dir: scripts/prompts
+  comfyui_dir: ../ComfyUI
+  musubi_dir: ../musubi-tuner
+
+runtime:
+  comfyui_host: localhost
+  comfyui_port: 8188
+  default_gpu: 1
+
+wan:
+  fps: 16
+  valid_frame_rule: "4n+1"
+  short_frames: 33
+  long_training_frames: 77
+  five_second_generation_frames: 81
+  native_i2v_buckets:
+    - [832, 480]
+    - [480, 832]
+    - [1280, 720]
+    - [720, 1280]
+
+generation:
+  default_width: 720
+  default_height: 512
+  default_lora_strength: 0.75
+  negative_prompt: "blurry, low quality, watermark, text, distorted, static, still image"
+  workflows:
+    t2v: scripts/comfyui_wan22_t2v_workflow.json
+    i2v_lora: scripts/comfyui_wan22_i2v_workflow.json
+    i2v_base: scripts/comfyui_wan22_i2v_base_workflow.json
+    svi: scripts/comfyui_svi_nodistill_long_workflow.json
+
+categories:
+  fighting:
+    class_id: 0
+    trigger: fght99
+    prompt_file: scripts/prompts/fighting.txt
+  vandalism:
+    class_id: 1
+    trigger: vndl77
+    prompt_file: scripts/prompts/vandalism.txt
+  stabbing:
+    class_id: 2
+    trigger: stbb44
+    prompt_file: scripts/prompts/stabbing.txt
+  shooting:
+    class_id: 3
+    trigger: shtn22
+    prompt_file: scripts/prompts/shooting.txt
+  self_injury:
+    class_id: 4
+    trigger: slfh55
+    prompt_file: scripts/prompts/self_injury_prison.txt
+

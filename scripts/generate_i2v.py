@@ -12,16 +12,26 @@ Usage:
 import json, random, time, requests, argparse
 from pathlib import Path
 import uuid
+import sys
 
-COMFYUI_URL = "http://localhost:8188"
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-BASE_LORA_PATHS = {
-    "fighting":    "fighting_i2v/fighting_i2v_lora_r32",
-    "vandalism":   "vandalism_i2v/vandalism_i2v_lora_r32",
-    "stabbing":    "stabbing_i2v/stabbing_i2v_lora_r32",
-    "shooting":    "shooting_i2v/shooting_i2v_lora_r32",
-    "self_injury": "self_injury_i2v/self_injury_i2v_lora_r32",
-}
+from scripts.categories import CATEGORIES, enabled_categories, require_category
+from scripts.manifest import (
+    build_manifest_row,
+    comfy_history_output_paths,
+    latest_matching_output,
+    repo_relative,
+    sha256_file,
+    write_manifest,
+)
+from scripts.workflow_utils import set_nested, validate_patch_fields
+from scripts.pipeline_config import config_value
+
+COMFYUI_URL = f"http://{config_value('runtime', 'comfyui_host', default='localhost')}:{config_value('runtime', 'comfyui_port', default=8188)}"
+OUTPUT_ROOT = Path(__file__).parent.parent / "generated" / "clips"
+BASE_LORA_PATHS = {name: c.i2v_lora_base for name, c in CATEGORIES.items() if c.enabled and c.i2v_lora_base}
 
 WORKFLOW_TEMPLATE_PATH = Path(__file__).parent / "comfyui_wan22_i2v_workflow.json"
 LORA_STRENGTH = 0.75
@@ -41,6 +51,17 @@ PATCH_FIELDS = {
     "width":         ("18", ["inputs", "width"]),
     "height":        ("18", ["inputs", "height"]),
     "filename":      ("9",  ["inputs", "filename_prefix"]),
+}
+EXPECTED_NODE_CLASSES = {
+    "6": "CLIPTextEncode",
+    "7": "CLIPTextEncode",
+    "9": "SaveVideo",
+    "12": "LoraLoaderModelOnly",
+    "13": "LoraLoaderModelOnly",
+    "18": "WanImageToVideo",
+    "19": "KSamplerAdvanced",
+    "20": "KSamplerAdvanced",
+    "23": "LoadImage",
 }
 
 
@@ -85,12 +106,12 @@ def build_workflow(prompt, seed, category, image_name, frames, strength, filenam
             "strength_high": strength,
             "strength_low": strength,
         })
+    node_ids = {PATCH_FIELDS[key][0] for key in patches}
+    expected = {node_id: cls for node_id, cls in EXPECTED_NODE_CLASSES.items() if node_id in node_ids}
+    validate_patch_fields(workflow, {key: PATCH_FIELDS[key] for key in patches}, expected)
     for key, value in patches.items():
         node_id, field_path = PATCH_FIELDS[key]
-        target = workflow[node_id]
-        for part in field_path[:-1]:
-            target = target[part]
-        target[field_path[-1]] = value
+        set_nested(workflow[node_id], field_path, value)
     return workflow
 
 
@@ -101,19 +122,19 @@ def queue_prompt(workflow) -> str:
     return resp.json()["prompt_id"]
 
 
-def wait_for_completion(prompt_id, timeout=2400) -> str:
-    """Returns 'ok', 'error', or 'timeout' based on real run status + output presence."""
+def wait_for_completion(prompt_id, timeout=2400) -> tuple[str, dict]:
+    """Returns (status, history_entry) based on real run status + output presence."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         entry = requests.get(f"{COMFYUI_URL}/history/{prompt_id}", timeout=10).json().get(prompt_id)
         if entry:
             status = entry.get("status", {})
             if status.get("status_str") == "error":
-                return "error"
+                return "error", entry
             if status.get("completed") or entry.get("outputs"):
-                return "ok" if any(entry.get("outputs", {}).values()) else "error"
+                return ("ok" if any(entry.get("outputs", {}).values()) else "error"), entry
         time.sleep(2)
-    return "timeout"
+    return "timeout", {}
 
 
 def load_prompts(category, prompts_file=None):
@@ -125,23 +146,24 @@ def load_prompts(category, prompts_file=None):
 def main():
     global COMFYUI_URL
     p = argparse.ArgumentParser()
-    p.add_argument("--category", required=True, choices=list(BASE_LORA_PATHS))
+    p.add_argument("--category", required=True, choices=[c for c in enabled_categories() if CATEGORIES[c].i2v_lora_base])
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--image", help="Single start frame (conditioning image)")
     g.add_argument("--image-dir", help="Directory of start frames; cycled across samples")
     p.add_argument("--count", type=int, default=4, help="Total samples to generate")
     p.add_argument("--prompt", default=None, help="Override prompt (else uses prompts/<category>.txt)")
     p.add_argument("--prompts-file", default=None, help="File of prompts to cycle (one per line)")
-    p.add_argument("--frames", type=int, default=33, help="33 -> ~2s, 81 -> ~5s @16fps")
-    p.add_argument("--width", type=int, default=512, help="must be divisible by 16")
-    p.add_argument("--height", type=int, default=768, help="must be divisible by 16")
-    p.add_argument("--strength", type=float, default=LORA_STRENGTH)
+    p.add_argument("--frames", type=int, default=config_value("wan", "short_frames", default=33), help="33 -> ~2s, 81 -> ~5s @16fps")
+    p.add_argument("--width", type=int, default=config_value("generation", "default_width", default=512), help="must be divisible by 16")
+    p.add_argument("--height", type=int, default=config_value("generation", "default_height", default=768), help="must be divisible by 16")
+    p.add_argument("--strength", type=float, default=config_value("generation", "default_lora_strength", default=LORA_STRENGTH))
     p.add_argument("--no-lora", action="store_true", help="Stock Wan2.2 I2V, no LoRA (baseline)")
     p.add_argument("--port", type=int, default=8188, help="ComfyUI port to target")
     p.add_argument("--shard", type=int, default=0, help="This worker's index (0-based)")
     p.add_argument("--num-shards", type=int, default=1, help="Total workers (for dual-GPU split)")
     p.add_argument("--seed", type=int, default=None, help="Fixed base seed (else random per sample)")
     args = p.parse_args()
+    category_cfg = require_category(args.category)
     COMFYUI_URL = f"http://localhost:{args.port}"
 
     # Collect start frames (single or directory), upload each once, keep the order stable.
@@ -155,7 +177,7 @@ def main():
 
     prompts = [args.prompt] if args.prompt else load_prompts(args.category, args.prompts_file)
     out_sub = f"{args.category}_i2v_base" if args.no_lora else f"{args.category}_i2v"
-    out_dir = Path(__file__).parent.parent / "generated" / "clips" / out_sub
+    out_dir = OUTPUT_ROOT / out_sub
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # This shard handles global indices i where i % num_shards == shard.
@@ -172,16 +194,41 @@ def main():
         prefix = f"{sub}/sample_{i:04d}"   # unique per global index -> no collisions
         wf = build_workflow(prompt, seed, args.category, image_name, args.frames, args.strength, prefix,
                             width=args.width, height=args.height, no_lora=args.no_lora)
+        t0 = time.time()
         pid = queue_prompt(wf)
-        status = wait_for_completion(pid)
-        rows.append({"id": i, "category": args.category, "prompt": prompt, "seed": seed,
-                     "start_frame": frame_path.name, "frames": args.frames,
-                     "prompt_id": pid, "status": status})
+        status, entry = wait_for_completion(pid)
+        outputs = comfy_history_output_paths(entry, OUTPUT_ROOT)
+        output_path = outputs[0] if outputs else latest_matching_output(OUTPUT_ROOT, prefix, t0)
+        lora_base = category_cfg.i2v_lora_base or ""
+        workflow_template = BASE_WORKFLOW_TEMPLATE_PATH if args.no_lora else WORKFLOW_TEMPLATE_PATH
+        rows.append(build_manifest_row(
+            id=i,
+            category=args.category,
+            method="i2v_base" if args.no_lora else "i2v_lora",
+            prompt=prompt,
+            negative_prompt=NEG_PROMPT,
+            seed=seed,
+            start_frame=frame_path,
+            frames=args.frames,
+            width=args.width,
+            height=args.height,
+            workflow_template=workflow_template,
+            workflow_sha256=sha256_file(workflow_template),
+            model_stack="wan2.2-i2v-a14b",
+            lora_high="" if args.no_lora else f"{lora_base}_high.safetensors",
+            lora_low="" if args.no_lora else f"{lora_base}_low.safetensors",
+            lora_strength="" if args.no_lora else args.strength,
+            output_path=output_path,
+            prompt_id=pid,
+            status=status,
+            error_reason=entry.get("status", {}).get("messages", "") if status != "ok" else "",
+            shard=args.shard,
+            num_shards=args.num_shards,
+        ))
         print(f"[shard {args.shard} {n+1}/{len(indices)}] global#{i} {status} — {frame_path.name} seed {seed}", flush=True)
 
-    import pandas as pd
     suffix = "" if args.num_shards == 1 else f"_shard{args.shard}"
-    pd.DataFrame(rows).to_csv(out_dir / f"{args.category}_i2v_manifest{suffix}.csv", index=False)
+    write_manifest(rows, out_dir / f"{args.category}_i2v_manifest{suffix}.csv")
     print(f"Manifest saved: {out_dir}/{args.category}_i2v_manifest{suffix}.csv")
 
 
