@@ -44,6 +44,16 @@ Then turn that into a prompt following the rules we learned work best:
   - ✅ "the silver car explodes in a fireball, flames and black smoke bursting outward, debris flying"
   - ❌ "car explosion"
 
+**Or automate it with Qwen** — `enhance_prompt.py` looks at the start image and expands a short
+idea into a grounded prompt following the rules above (collapses caption→craft into one call):
+```bash
+.venv/bin/python scripts/enhance_prompt.py carpark-singapore.jpg "the yellow taxi explodes"
+# -> "yellow taxi explodes in mid-air, debris scattering across concrete barrier and grassy area,
+#     multi-level parking structure behind, daylight surveillance view"
+```
+Or do it inline during generation with `--auto-prompt "<idea>"` (see §3) — it enhances per start
+frame and prints the prompt it used. The 7B model is modest, so eyeball/edit for important runs.
+
 ## 3. Generate
 
 ### Image-to-video, single clip (most common)
@@ -55,7 +65,7 @@ Then turn that into a prompt following the rules we learned work best:
   --frames 81 --width 832 --height 480 --count 1 --port 8188
 ```
 - `--no-lora` = stock Wan 2.2 (recommended; the trained LoRAs add blur — see HANDOFF).
-- `--frames`: 33 ≈ 2 s, 81 ≈ 5 s (16 fps). `--count N` for N variations; `--image-dir DIR` cycles frames; `--prompts-file FILE` cycles prompts.
+- `--frames`: 33 ≈ 2 s, 81 ≈ 5 s (16 fps). `--count N` for N variations; `--image-dir DIR` cycles frames; `--prompts-file FILE` cycles prompts; **`--auto-prompt "<idea>"`** lets Qwen write the prompt from the start image.
 - Output → `generated/clips/<category>_i2v_base/` + a manifest CSV (prompt/seed/start-frame per clip).
 
 ### Text-to-video

@@ -27,6 +27,7 @@ from scripts.manifest import (
     write_manifest,
 )
 from scripts.workflow_utils import set_nested, validate_patch_fields
+from scripts.enhance_prompt import enhance_prompt
 from scripts.pipeline_config import config_value
 
 COMFYUI_URL = f"http://{config_value('runtime', 'comfyui_host', default='localhost')}:{config_value('runtime', 'comfyui_port', default=8188)}"
@@ -153,6 +154,9 @@ def main():
     p.add_argument("--count", type=int, default=4, help="Total samples to generate")
     p.add_argument("--prompt", default=None, help="Override prompt (else uses prompts/<category>.txt)")
     p.add_argument("--prompts-file", default=None, help="File of prompts to cycle (one per line)")
+    p.add_argument("--auto-prompt", default=None, metavar="IDEA",
+                   help="Qwen-VL enhances this short idea into a detailed, scene-grounded prompt "
+                        "per start frame (e.g. 'the yellow taxi explodes')")
     p.add_argument("--frames", type=int, default=config_value("wan", "short_frames", default=33), help="33 -> ~2s, 81 -> ~5s @16fps")
     p.add_argument("--width", type=int, default=config_value("generation", "default_width", default=512), help="must be divisible by 16")
     p.add_argument("--height", type=int, default=config_value("generation", "default_height", default=768), help="must be divisible by 16")
@@ -175,7 +179,9 @@ def main():
         raise FileNotFoundError("No start frames found.")
     uploaded = {}  # local path -> ComfyUI name (upload each distinct frame only once)
 
-    prompts = [args.prompt] if args.prompt else load_prompts(args.category, args.prompts_file)
+    # Prompt source: --auto-prompt (Qwen per-frame) takes precedence; else --prompt / file / library.
+    enhanced = {}  # frame_path -> Qwen-enhanced prompt (cache per distinct frame)
+    prompts = None if args.auto_prompt else ([args.prompt] if args.prompt else load_prompts(args.category, args.prompts_file))
     out_sub = f"{args.category}_i2v_base" if args.no_lora else f"{args.category}_i2v"
     out_dir = OUTPUT_ROOT / out_sub
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -188,7 +194,13 @@ def main():
         if frame_path not in uploaded:
             uploaded[frame_path] = upload_image(frame_path)
         image_name = uploaded[frame_path]
-        prompt = prompts[i % len(prompts)]
+        if args.auto_prompt:
+            if frame_path not in enhanced:
+                enhanced[frame_path] = enhance_prompt(str(frame_path), args.auto_prompt)
+                print(f"  [auto-prompt {frame_path.name}] {enhanced[frame_path]}", flush=True)
+            prompt = enhanced[frame_path]
+        else:
+            prompt = prompts[i % len(prompts)]
         seed = (args.seed + i) if args.seed is not None else random.randint(0, 2**32 - 1)
         sub = f"{args.category}_i2v_base" if args.no_lora else f"{args.category}_i2v"
         prefix = f"{sub}/sample_{i:04d}"   # unique per global index -> no collisions
