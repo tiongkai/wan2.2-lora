@@ -100,13 +100,18 @@ def build_manifest_row(**kwargs: Any) -> dict[str, Any]:
     return row
 
 
-def write_manifest(rows: list[dict[str, Any]], path: Path) -> None:
+def write_manifest(rows: list[dict[str, Any]], path: Path, append: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows)
     for column in CANONICAL_COLUMNS:
         if column not in df.columns:
             df[column] = ""
-    df[CANONICAL_COLUMNS + [c for c in df.columns if c not in CANONICAL_COLUMNS]].to_csv(path, index=False)
+    if append and path.exists():
+        existing = pd.read_csv(path, dtype=str, keep_default_na=False)
+        df = pd.concat([existing, df], ignore_index=True)
+        df = df.fillna("")
+    ordered = CANONICAL_COLUMNS + [c for c in df.columns if c not in CANONICAL_COLUMNS]
+    df[ordered].to_csv(path, index=False)
 
 
 def discover_manifests(generated_dir: Path) -> list[Path]:

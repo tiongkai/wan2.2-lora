@@ -26,6 +26,8 @@ INSTRUCTION = (
     "- Describe the action as PHYSICAL MOTION — what moves and how (kinematic, concrete steps), "
     "not an abstract verb.\n"
     "- Keep it to ONE clear action (the idea above).\n"
+    "- Do NOT invent motion that isn't in the idea: keep every subject in its current state "
+    "(a parked/stationary car stays parked and does NOT drive or move) — only the stated action happens.\n"
     "- Prefer a surveillance / security-camera framing if it suits the scene.\n"
     "Output ONLY the final prompt as a single line. No preamble, no quotes, no explanation, no markdown."
 )

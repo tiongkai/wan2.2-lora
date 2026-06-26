@@ -166,6 +166,8 @@ def main():
     p.add_argument("--shard", type=int, default=0, help="This worker's index (0-based)")
     p.add_argument("--num-shards", type=int, default=1, help="Total workers (for dual-GPU split)")
     p.add_argument("--seed", type=int, default=None, help="Fixed base seed (else random per sample)")
+    p.add_argument("--append-manifest", action="store_true",
+                   help="Append rows to the manifest instead of overwriting (preserves prior single-clip prompts)")
     args = p.parse_args()
     category_cfg = require_category(args.category)
     COMFYUI_URL = f"http://localhost:{args.port}"
@@ -240,7 +242,7 @@ def main():
         print(f"[shard {args.shard} {n+1}/{len(indices)}] global#{i} {status} — {frame_path.name} seed {seed}", flush=True)
 
     suffix = "" if args.num_shards == 1 else f"_shard{args.shard}"
-    write_manifest(rows, out_dir / f"{args.category}_i2v_manifest{suffix}.csv")
+    write_manifest(rows, out_dir / f"{args.category}_i2v_manifest{suffix}.csv", append=args.append_manifest)
     print(f"Manifest saved: {out_dir}/{args.category}_i2v_manifest{suffix}.csv")
 
 
