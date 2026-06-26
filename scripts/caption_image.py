@@ -18,11 +18,11 @@ DEFAULT_PROMPT = (
 
 
 def caption(image_path, prompt=DEFAULT_PROMPT,
-            model="huihui_ai/qwen2.5-vl-abliterated:7b",
+            model="huihui_ai/qwen3.5-abliterated:9b",
             url="http://localhost:11434/api/generate", num_predict=400):
     img = base64.b64encode(open(image_path, "rb").read()).decode()
     r = requests.post(url, json={"model": model, "prompt": prompt, "images": [img],
-                                 "stream": False, "options": {"num_predict": num_predict}},
+                                 "stream": False, "think": False, "options": {"num_predict": num_predict}},
                       timeout=300)
     r.raise_for_status()
     return r.json().get("response", "").strip()
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("image")
     ap.add_argument("--prompt", default=DEFAULT_PROMPT)
-    ap.add_argument("--model", default="huihui_ai/qwen2.5-vl-abliterated:7b")
+    ap.add_argument("--model", default="huihui_ai/qwen3.5-abliterated:9b")
     ap.add_argument("--url", default="http://localhost:11434/api/generate")
     a = ap.parse_args()
     print(caption(a.image, a.prompt, a.model, a.url))

@@ -11,7 +11,7 @@ from scripts.utils import probe_duration
 from scripts.categories import TRIGGERS, enabled_categories
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "huihui_ai/qwen2.5-vl-abliterated:7b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "huihui_ai/qwen3.5-abliterated:9b")
 
 CAPTION_SYSTEM = textwrap.dedent("""
     You are a dataset annotation assistant for a computer vision security system.
@@ -68,7 +68,7 @@ def query_vlm(frames: list[Path], trigger: str, category: str, clip_duration: fl
         "prompt": prompt,
         "system": CAPTION_SYSTEM,
         "images": [_image_to_b64(f) for f in frames],
-        "stream": False,
+        "stream": False, "think": False,
     }
     resp = requests.post(OLLAMA_URL, json=payload, timeout=600)
     resp.raise_for_status()

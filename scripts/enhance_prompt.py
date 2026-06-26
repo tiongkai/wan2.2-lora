@@ -32,7 +32,7 @@ INSTRUCTION = (
 
 
 def enhance_prompt(image_path, idea,
-                   model="huihui_ai/qwen2.5-vl-abliterated:7b",
+                   model="huihui_ai/qwen3.5-abliterated:9b",
                    url="http://localhost:11434/api/generate",
                    num_predict=220, temperature=0.6):
     img = base64.b64encode(open(image_path, "rb").read()).decode()
@@ -40,7 +40,7 @@ def enhance_prompt(image_path, idea,
         "model": model,
         "prompt": INSTRUCTION.format(idea=idea),
         "images": [img],
-        "stream": False,
+        "stream": False, "think": False,
         "options": {"num_predict": num_predict, "temperature": temperature},
     }, timeout=300)
     r.raise_for_status()
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("image")
     ap.add_argument("idea", help="short action idea, e.g. 'the yellow taxi explodes'")
-    ap.add_argument("--model", default="huihui_ai/qwen2.5-vl-abliterated:7b")
+    ap.add_argument("--model", default="huihui_ai/qwen3.5-abliterated:9b")
     ap.add_argument("--url", default="http://localhost:11434/api/generate")
     a = ap.parse_args()
     print(enhance_prompt(a.image, a.idea, a.model, a.url))
